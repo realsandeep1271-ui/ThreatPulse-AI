@@ -1,0 +1,38 @@
+name: 24/7 CVE Threat Intelligence Bot
+
+on:
+  schedule:
+    # Runs every 1 hour (24/7/365)
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI anytime!
+
+jobs:
+  check-cves:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit seen_cves.json back to repo
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Threat Intel Bot
+        run: |
+          python cve_intel_bot.py
+
+      - name: Commit and Push Updated Baseline
+        run: |
+          git config --global user.name "Sandeep-Bot"
+          git config --global user.email "bot@realsandeep1271.ui"
+          git add seen_cves.json cisa_kev_cache.json 2>/dev/null || true
+          if git diff-index --quiet HEAD --; then
+            echo "No new CVEs to commit."
+          else
+            git commit -m "chore: update seen CVEs baseline [skip ci]"
+            git push
+          fi
