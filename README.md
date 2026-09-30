@@ -39,27 +39,32 @@ Developed by **Sandeep Yadav** ([@realsandeep1271-ui](https://github.com/realsan
 
 ---
 
-## 🌟 5 Powerhouse Features Built-in
+## 🌟 8 Powerhouse Features (Top 1% Elite Edition)
 
-| Feature | Description | Trigger |
-|:---|:---|:---|
-| **1. 🚨 CISA Zero-Day & 1-Day Radar** | Live exploited bugs + FIRST EPSS likelihood + GitHub PoC exploit links | Automated Every 30 Mins |
-| **2. 🎯 1-Minute Bug Bounty Playbook** | High-impact real-world bypasses (403, IDOR, SSRF, CORS, OAuth) | Daily & on `/tip` command |
-| **3. 🤖 Interactive Student Bot** | Students can query `/cve`, `/tool`, `/tip`, `/news`, `/labs` directly in chat | Real-time |
-| **4. 🛠️ Trending Hacker Arsenal** | GitHub search for trending open-source red-team & pentest repositories | Quiet-day rotation & on `/tool` |
-| **5. ⚡ Cyber News in 60 Seconds** | Breaking cybersecurity headlines curated from live RSS feeds | Breaking updates & on `/news` |
+| Feature | Description | Target Audience | Trigger |
+|:---|:---|:---|:---|
+| **1. ⚡ Day-1 Zero-Days (GHSA)** | Early-warning pre-disclosure advisories before CISA KEV adds them | Top 1% Bug Hunters | Automated Every 30 Mins |
+| **2. 🎯 Nuclei Scanner Templates** | Ready-to-run `nuclei -t cves/` YAML links for 10,000-subdomain scans | Elite Bounty Hunters | With every CVE & `/nuclei` |
+| **3. 🔬 Root-Cause Patch Diffs** | Direct GitHub commit diff links (`+` and `-` lines) to analyze code fixes | Reverse Engineers | With every CVE/GHSA |
+| **4. 🚨 CISA Zero-Day & 1-Day Radar** | Live exploited bugs + FIRST EPSS likelihood + GitHub PoC exploit links | Red & Blue Teams | Automated Every 30 Mins |
+| **5. 🎯 1-Minute Bug Bounty Playbook** | High-impact real-world bypasses (403, IDOR, SSRF, CORS, OAuth) | Pentesters & Hunters | Daily & on `/tip` command |
+| **6. 🧩 Hacker Browser Extensions** | Must-have extensions (HackTools, FoxyProxy, Wappalyzer, Cookie-Editor) | Web Pentesters | Daily & on `/extension` |
+| **7. 🛠️ Trending Hacker Arsenal** | GitHub search for trending open-source red-team & pentest repositories | Security Researchers | Quiet-day rotation & on `/tool` |
+| **8. ⚡ Cyber News in 60 Seconds** | Breaking cybersecurity headlines curated from live RSS feeds | All Infosec Peers | Breaking updates & on `/news` |
 
 ---
 
-## 🎮 Student Command Menu (In Telegram)
+## 🎮 Interactive Command Menu (In Telegram)
 
-Students can interact with the bot in any group, channel, or direct message:
+Students & Researchers can interact with the bot in any group, channel, or direct message:
 
-- `/cve <keyword>` — Search for recent exploited vulnerabilities (e.g. `/cve windows`, `/cve apple`)
+- `/0day` — Trigger latest Day-1 Pre-Disclosure Advisories (GHSA Zero-Days)
+- `/nuclei <cve>` — Check ready-made Nuclei scanner template (e.g. `/nuclei CVE-2026-0545`)
+- `/cve <keyword>` — Search latest exploited vulnerabilities (e.g. `/cve windows`, `/cve apple`)
 - `/tool <keyword>` — Discover top trending hacker tools on GitHub (e.g. `/tool osint`, `/tool recon`)
+- `/extension` — Get today's top hacker browser extension
 - `/tip` — Receive today's 1-Minute Bug Bounty Trick
 - `/news` — Breaking cyber threat news in 60 seconds
-- `/labs` — Free hands-on labs, rooms, and certification vouchers
 - `/help` — Display the full interactive menu
 
 ---

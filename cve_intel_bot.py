@@ -12,9 +12,11 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1004461177482")  # Supergroup
 
 CISA_KEV_URL = "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json"
 THN_RSS_URL = "https://feeds.feedburner.com/TheHackersNews"
+GHSA_API_URL = "https://api.github.com/advisories?per_page=10"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SEEN_FILE = os.path.join(BASE_DIR, "seen_cves.json")
+SEEN_GHSA_FILE = os.path.join(BASE_DIR, "seen_ghsa.json")
 CISA_LOCAL_CACHE = os.path.join(BASE_DIR, "cisa_kev_cache.json")
 STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
 
@@ -33,7 +35,7 @@ def send_telegram_message(message: str, chat_id: str = TELEGRAM_CHAT_ID, reply_t
         payload["reply_to_message_id"] = reply_to_id
 
     data = urllib.parse.urlencode(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"User-Agent": "CyberIntelBot/2.5"})
+    req = urllib.request.Request(url, data=data, headers={"User-Agent": "CyberIntelBot/3.0"})
 
     for attempt in range(1, 4):
         try:
@@ -234,7 +236,117 @@ def format_news_alert(news_item: dict):
         f"🛡️ *Sandeep's Cyber Threat News*"
     )
 
-# ================= 5. CISA KEV & CVE CORE =================
+# ================= 5. TOP 1% ELITE HACKER ARSENAL =================
+def check_nuclei_template(cve_id: str):
+    """Checks if ProjectDiscovery Nuclei Template exists for this CVE."""
+    if not cve_id or not cve_id.startswith("CVE-"):
+        return None
+    try:
+        parts = cve_id.split("-")
+        year = parts[1]
+        raw_url = f"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/http/cves/{year}/{cve_id}.yaml"
+        req = urllib.request.Request(raw_url, method="HEAD", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            if resp.status == 200:
+                return {
+                    "template_url": f"https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/{year}/{cve_id}.yaml",
+                    "command": f"nuclei -t http/cves/{year}/{cve_id}.yaml -u https://target.com"
+                }
+    except Exception:
+        pass
+    return None
+
+def find_patch_commit_diffs(cve_id: str):
+    """Searches GitHub for developer fix / security patch commits."""
+    query = urllib.parse.quote(f"{cve_id} fix OR patch")
+    url = f"https://api.github.com/search/commits?q={query}&sort=committer-date&order=desc&per_page=2"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/vnd.github.cloak-preview+json"
+    })
+    diffs = []
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+            for item in data.get("items", []):
+                diffs.append({
+                    "msg": item.get("commit", {}).get("message", "").split("\n")[0][:80],
+                    "url": item.get("html_url"),
+                    "repo": item.get("repository", {}).get("full_name")
+                })
+    except Exception:
+        pass
+    return diffs
+
+def fetch_ghsa_early_advisories():
+    """Fetches Day-1 Zero-Days from GitHub Security Advisories before CISA KEV adds them."""
+    req = urllib.request.Request(GHSA_API_URL, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/vnd.github.v3+json"
+    })
+    advisories = []
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode())
+            for item in data:
+                # Prioritize Critical and High
+                sev = item.get("severity", "unknown").lower()
+                cve = item.get("cve_id") or "Pending CVE"
+                ghsa = item.get("ghsa_id")
+                summary = item.get("summary") or "No summary provided."
+                html_url = item.get("html_url")
+                refs = item.get("references", [])
+                
+                # Extract commit diff if present in references
+                patch_url = None
+                for r in refs:
+                    if "/commit/" in r or "/pull/" in r:
+                        patch_url = r
+                        break
+
+                advisories.append({
+                    "ghsa_id": ghsa,
+                    "cve_id": cve,
+                    "severity": sev.upper(),
+                    "summary": summary,
+                    "url": html_url,
+                    "patch_url": patch_url
+                })
+    except Exception as e:
+        print(f"[-] GHSA Fetch Error: {e}")
+    return advisories
+
+def format_ghsa_alert(adv: dict, nuclei_info: dict = None):
+    # Sanitize markdown in summary to prevent Telegram 400 Bad Request
+    clean_summary = adv['summary'].replace("_", "\\_").replace("*", "\\*").replace("[", "(").replace("]", ")").replace("`", "'")
+    nuclei_text = ""
+    if nuclei_info:
+        nuclei_text = (
+            f"\n🎯 *Ready-to-Scan Nuclei Template:*\n"
+            f"🔗 [{nuclei_info['template_url']}]({nuclei_info['template_url']})\n"
+            f"💻 `nuclei -t cves/ -u https://target.com`\n"
+        )
+    else:
+        nuclei_text = "\n🎯 *Nuclei Template:* Community YAML in progress.\n"
+
+    patch_text = ""
+    if adv.get("patch_url"):
+        patch_text = f"\n🔬 *Root-Cause Patch Diff Link:*\n🔗 {adv['patch_url']}\n"
+
+    return (
+        f"⚡ *DAY-1 ZERO-DAY PRE-DISCLOSURE RADAR (GHSA)*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 *ID:* `{adv['ghsa_id']}` | *CVE:* `{adv['cve_id']}`\n"
+        f"🚨 *Severity:* `{adv['severity']}` (Pre-KEV Early Alert)\n\n"
+        f"📖 *Vulnerability Summary:*\n{clean_summary}\n"
+        f"{nuclei_text}"
+        f"{patch_text}\n"
+        f"🔗 *Full Security Advisory:*\n{adv['url']}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👑 *Sandeep's Top 1% Hacker Radar*"
+    )
+
+# ================= 6. CISA KEV & CVE CORE =================
 def fetch_cisa_kev():
     urls = [
         "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json",
@@ -266,7 +378,7 @@ def fetch_cisa_kev():
 def find_github_pocs(cve_id: str):
     query = urllib.parse.quote(f"{cve_id} exploit")
     url = f"https://api.github.com/search/repositories?q={query}&sort=stars&order=desc&per_page=3"
-    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/2.5"})
+    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/3.0"})
     pocs = []
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -283,7 +395,7 @@ def find_github_pocs(cve_id: str):
 
 def fetch_epss_score(cve_id: str):
     url = f"https://api.first.org/data/v1/epss?cve={cve_id}"
-    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/2.5"})
+    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/3.0"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
@@ -296,7 +408,7 @@ def fetch_epss_score(cve_id: str):
         pass
     return "Not Available"
 
-def format_cve_alert(cve_item: dict, pocs: list, epss: str):
+def format_cve_alert(cve_item: dict, pocs: list, epss: str, nuclei_info: dict = None, patch_diffs: list = None):
     cve_id = cve_item.get("cveID", "Unknown")
     vendor = cve_item.get("vendorProject", "Unknown")
     product = cve_item.get("product", "Unknown")
@@ -315,6 +427,20 @@ def format_cve_alert(cve_item: dict, pocs: list, epss: str):
     else:
         poc_text = "\n*🔍 GitHub PoC:* No public exploit repo indexed yet.\n"
 
+    nuclei_text = ""
+    if nuclei_info:
+        nuclei_text = (
+            f"\n🎯 *Top 1% Scanner Template (Nuclei YAML):*\n"
+            f"🔗 [{nuclei_info['template_url']}]({nuclei_info['template_url']})\n"
+            f"💻 `{nuclei_info['command']}`\n"
+        )
+
+    patch_text = ""
+    if patch_diffs:
+        patch_text = "\n🔬 *Root-Cause Patch Commit Diffs:*\n"
+        for idx, pd in enumerate(patch_diffs[:2], 1):
+            patch_text += f"{idx}. [{pd['repo']}: {pd['msg']}]({pd['url']})\n"
+
     alert = (
         f"🚨 *NEW CISA EXPLOITED VULNERABILITY ALERT*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -326,14 +452,16 @@ def format_cve_alert(cve_item: dict, pocs: list, epss: str):
         f"📊 *Threat Intelligence Metrics:*\n"
         f"• *Ransomware Use:* `{ransomware}`\n"
         f"• *EPSS Exploit Likelihood:* `{epss}`\n"
-        f"{poc_text}\n"
+        f"{poc_text}"
+        f"{nuclei_text}"
+        f"{patch_text}\n"
         f"🛠️ *Required Defensive Action:*\n{action}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🛡️ *Sandeep's Cyber Threat Intel Bot*"
     )
     return alert
 
-# ================= 6. INTERACTIVE STUDENT COMMAND HANDLER =================
+# ================= 7. INTERACTIVE STUDENT COMMAND HANDLER =================
 def process_interactive_commands():
     state = load_bot_state()
     offset = state.get("last_update_id", 0) + 1
@@ -368,18 +496,40 @@ def process_interactive_commands():
 
         if cmd in ["/help", "/start", "/menu"]:
             help_text = (
-                f"🤖 *Cyber Threat Intel Bot — Student Command Menu*\n"
+                f"🤖 *Cyber Threat Intel Bot — Elite Command Menu*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"Hi {msg.get('from', {}).get('first_name', 'Hacker')}! You can query me using these commands:\n\n"
                 f"📌 `/cve <keyword>` — Search latest exploited CVEs (e.g. `/cve windows` or `/cve apple`)\n"
+                f"⚡ `/0day` — Day-1 Pre-Disclosure Advisories (GHSA Zero-Days)\n"
+                f"🎯 `/nuclei <cve>` — Check ready-made Nuclei scanner template\n"
                 f"🛠️ `/tool <keyword>` — Discover top trending hacker tools (e.g. `/tool osint`)\n"
                 f"🧩 `/extension` — Get today's top hacker browser extension\n"
                 f"🎯 `/tip` — Get today's 1-Minute Bug Bounty Trick\n"
                 f"⚡ `/news` — Breaking corporate & cyber news in 60 seconds\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👨‍💻 *Created by Sandeep Yadav (@realsandeep1271-ui)*"
+                f"👑 *Engineered by Sandeep Yadav (@realsandeep1271-ui)*"
             )
             send_telegram_message(help_text, chat_id=chat_id, reply_to_id=msg_id)
+
+        elif cmd == "/0day":
+            advs = fetch_ghsa_early_advisories()
+            if advs:
+                send_telegram_message(format_ghsa_alert(advs[0]), chat_id=chat_id, reply_to_id=msg_id)
+            else:
+                send_telegram_message("🔍 No new Day-1 advisories at this moment.", chat_id=chat_id, reply_to_id=msg_id)
+
+        elif cmd == "/nuclei":
+            cve_target = args.upper().strip() if args else "CVE-2026-0545"
+            n_info = check_nuclei_template(cve_target)
+            if n_info:
+                reply = (
+                    f"🎯 *Nuclei Template Found for {cve_target}:*\n"
+                    f"🔗 [{n_info['template_url']}]({n_info['template_url']})\n\n"
+                    f"💻 *Run Command:*\n`{n_info['command']}`"
+                )
+            else:
+                reply = f"🔍 No official Nuclei YAML template indexed yet for `{cve_target}`."
+            send_telegram_message(reply, chat_id=chat_id, reply_to_id=msg_id)
 
         elif cmd in ["/tip", "/bounty"]:
             idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
@@ -415,7 +565,9 @@ def process_interactive_commands():
                 cve_id = item.get("cveID")
                 pocs = find_github_pocs(cve_id)
                 epss = fetch_epss_score(cve_id)
-                send_telegram_message(format_cve_alert(item, pocs, epss), chat_id=chat_id, reply_to_id=msg_id)
+                nuclei_info = check_nuclei_template(cve_id)
+                patch_diffs = find_patch_commit_diffs(cve_id)
+                send_telegram_message(format_cve_alert(item, pocs, epss, nuclei_info, patch_diffs), chat_id=chat_id, reply_to_id=msg_id)
             else:
                 send_telegram_message(f"🔍 No CISA exploited CVE found matching `{query}`.", chat_id=chat_id, reply_to_id=msg_id)
 
@@ -429,7 +581,7 @@ def run_sync(test_mode=False):
     print("[*] Processing interactive student commands...")
     process_interactive_commands()
 
-    # 1. TRACK: REAL-TIME CISA CVE RADAR
+    # 1. TRACK: REAL-TIME CISA CVE RADAR (WITH NUCLEI & PATCH DIFF ENRICHMENT)
     print("[*] Checking CISA KEV Exploited Vulnerabilities...")
     kev_data = fetch_cisa_kev()
     if kev_data and "vulnerabilities" in kev_data:
@@ -448,7 +600,7 @@ def run_sync(test_mode=False):
             print(f"[*] First run: Storing {len(all_cve_ids)} existing CVEs as baseline...")
             with open(SEEN_FILE, "w", encoding="utf-8") as f:
                 json.dump(all_cve_ids, f)
-            send_telegram_message("✅ *24/7 Multi-Track Threat Intel Engine Active!* Baseline established.")
+            send_telegram_message("✅ *24/7 Top 1% Threat Intel Engine Active!* Baseline established.")
             return
 
         if test_mode:
@@ -465,7 +617,9 @@ def run_sync(test_mode=False):
                 cve_id = item.get("cveID")
                 pocs = find_github_pocs(cve_id)
                 epss = fetch_epss_score(cve_id)
-                alert_msg = format_cve_alert(item, pocs, epss)
+                nuclei_info = check_nuclei_template(cve_id)
+                patch_diffs = find_patch_commit_diffs(cve_id)
+                alert_msg = format_cve_alert(item, pocs, epss, nuclei_info, patch_diffs)
                 send_telegram_message(alert_msg)
                 if not test_mode:
                     seen_ids.add(cve_id)
@@ -477,7 +631,28 @@ def run_sync(test_mode=False):
         else:
             print("[+] No new CVEs detected right now.")
 
-    # 2. TRACK: DAILY BUG BOUNTY TRICK (Guaranteed Daily Drop)
+    # 2. TRACK: DAY-1 EARLY WARNING (GHSA ZERO-DAYS)
+    seen_ghsa = set()
+    if os.path.exists(SEEN_GHSA_FILE):
+        try:
+            with open(SEEN_GHSA_FILE, "r", encoding="utf-8") as f:
+                seen_ghsa = set(json.load(f))
+        except Exception:
+            seen_ghsa = set()
+
+    print("[*] Checking GitHub Security Advisories (Day-1 0-Days)...")
+    advs = fetch_ghsa_early_advisories()
+    new_advs = [a for a in advs if a["ghsa_id"] not in seen_ghsa and a["severity"] in ["CRITICAL", "HIGH"]]
+    if new_advs:
+        print(f"[!] Broadcasting {len(new_advs)} new GHSA Day-1 Zero-Day(s)...")
+        for a in new_advs[:2]:
+            n_info = check_nuclei_template(a.get("cve_id"))
+            send_telegram_message(format_ghsa_alert(a, n_info))
+            seen_ghsa.add(a["ghsa_id"])
+        with open(SEEN_GHSA_FILE, "w", encoding="utf-8") as gf:
+            json.dump(list(seen_ghsa), gf)
+
+    # 3. TRACK: DAILY BUG BOUNTY TRICK (Guaranteed Daily Drop)
     if state.get("last_tip_date") != today_str:
         print("[*] Broadcasting Daily Bug Bounty Trick...")
         idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
@@ -487,7 +662,7 @@ def run_sync(test_mode=False):
         save_bot_state(state)
         print("[+] Daily Bug Bounty trick sent!")
 
-    # 3. TRACK: DAILY HACKER BROWSER EXTENSION
+    # 4. TRACK: DAILY HACKER BROWSER EXTENSION
     if state.get("last_extension_date") != today_str:
         print("[*] Broadcasting Daily Hacker Browser Extension...")
         idx = datetime.datetime.now().day % len(HACKER_EXTENSIONS)
@@ -497,7 +672,7 @@ def run_sync(test_mode=False):
         save_bot_state(state)
         print("[+] Daily Hacker Extension sent!")
 
-    # 4. TRACK: CORPORATE & GLOBAL CYBER NEWS
+    # 5. TRACK: CORPORATE & GLOBAL CYBER NEWS
     if state.get("last_news_date") != today_str:
         print("[*] Broadcasting Corporate Threat & Cyber News...")
         news = fetch_latest_cyber_news()
@@ -508,6 +683,22 @@ def run_sync(test_mode=False):
             print("[+] Corporate Cyber News sent!")
 
 if __name__ == "__main__":
+    if "--0day" in sys.argv:
+        advs = fetch_ghsa_early_advisories()
+        if advs:
+            n_info = check_nuclei_template(advs[0].get("cve_id"))
+            send_telegram_message(format_ghsa_alert(advs[0], n_info))
+            print("[+] Sent GHSA 0-Day Alert")
+        sys.exit(0)
+
+    if "--nuclei" in sys.argv:
+        n_info = check_nuclei_template("CVE-2026-0545")
+        if n_info:
+            reply = f"🎯 *Nuclei Scanner Template:*\n`{n_info['command']}`\n🔗 {n_info['template_url']}"
+            send_telegram_message(reply)
+            print("[+] Sent Nuclei Alert")
+        sys.exit(0)
+
     if "--extension" in sys.argv:
         idx = datetime.datetime.now().day % len(HACKER_EXTENSIONS)
         send_telegram_message(format_extension_alert(HACKER_EXTENSIONS[idx]))

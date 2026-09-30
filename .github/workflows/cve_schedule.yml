@@ -22,6 +22,8 @@ jobs:
           python-version: '3.11'
 
       - name: Run Threat Intel Bot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python cve_intel_bot.py
 
@@ -29,10 +31,10 @@ jobs:
         run: |
           git config --global user.name "Sandeep-Bot"
           git config --global user.email "bot@realsandeep1271.ui"
-          git add seen_cves.json cisa_kev_cache.json 2>/dev/null || true
+          git add seen_cves.json seen_ghsa.json cisa_kev_cache.json bot_state.json 2>/dev/null || true
           if git diff-index --quiet HEAD --; then
             echo "No new CVEs to commit."
           else
-            git commit -m "chore: update seen CVEs baseline [skip ci]"
+            git commit -m "chore: update threat intel baseline [skip ci]"
             git push
           fi
