@@ -20,7 +20,8 @@ STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
 
 # ================= TELEGRAM API HELPERS =================
 def send_telegram_message(message: str, chat_id: str = TELEGRAM_CHAT_ID, reply_to_id: int = None):
-    """Sends a formatted markdown message to Telegram."""
+    """Sends a formatted markdown message to Telegram with auto-retry."""
+    import time
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -33,12 +34,15 @@ def send_telegram_message(message: str, chat_id: str = TELEGRAM_CHAT_ID, reply_t
 
     data = urllib.parse.urlencode(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers={"User-Agent": "CyberIntelBot/2.5"})
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read().decode())
-    except Exception as e:
-        print(f"[-] Telegram Send Error: {e}")
-        return None
+
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                return json.loads(resp.read().decode())
+        except Exception as e:
+            print(f"[-] Telegram Send Attempt {attempt} Error: {e}")
+            time.sleep(2)
+    return None
 
 # ================= STATE MANAGEMENT =================
 def load_bot_state():
