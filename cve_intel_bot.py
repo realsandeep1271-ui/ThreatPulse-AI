@@ -114,9 +114,6 @@ def format_cve_alert(cve_item: dict, pocs: list, epss: str):
         poc_text = "\n*🔥 Public GitHub PoC Exploits Found:*\n"
         for idx, p in enumerate(pocs, 1):
             poc_text += f"{idx}. [{p['name']}]({p['url']}) ⭐ {p['stars']}\n"
-    else:
-        poc_text = "\n*🔍 GitHub PoC:* No public exploit repo indexed yet.\n"
-
     alert = (
         f"🚨 *NEW CISA EXPLOITED VULNERABILITY ALERT*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -134,6 +131,43 @@ def format_cve_alert(cve_item: dict, pocs: list, epss: str):
         f"🛡️ *Sandeep's Cyber Threat Intel Bot*"
     )
     return alert
+
+def fetch_trending_hacker_tools():
+    """Fetches trending open-source hacker & cybersecurity tools from GitHub."""
+    query = urllib.parse.quote("topic:security stars:>500")
+    url = f"https://api.github.com/search/repositories?q={query}&sort=updated&order=desc&per_page=3"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/vnd.github.v3+json"
+    })
+    tools = []
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            for item in data.get("items", []):
+                tools.append({
+                    "name": item.get("full_name"),
+                    "desc": item.get("description") or "No description provided.",
+                    "url": item.get("html_url"),
+                    "stars": item.get("stargazers_count", 0),
+                    "lang": item.get("language") or "General"
+                })
+    except Exception as e:
+        print(f"[-] Trending Tools Fetch Error: {e}")
+    return tools
+
+def format_tool_alert(tool: dict):
+    """Formats the trending tool message for Telegram."""
+    return (
+        f"🛠️ *TRENDING HACKER TOOL OF THE DAY*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔥 *Tool:* `{tool['name']}`\n"
+        f"⭐ *Stars:* {tool['stars']} | 💻 *Language:* `{tool['lang']}`\n\n"
+        f"📖 *What it does:*\n{tool['desc']}\n\n"
+        f"🔗 *GitHub Repository:*\n[{tool['url']}]({tool['url']})\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🛡️ *Sandeep's Hacker Arsenal Radar*"
+    )
 
 def run_sync(test_mode=False):
     """Main execution loop."""
@@ -198,5 +232,16 @@ def run_sync(test_mode=False):
         print("[+] Updated seen_cves.json successfully.")
 
 if __name__ == "__main__":
+    if "--tool" in sys.argv:
+        print("[*] Fetching trending hacker tools...")
+        tools = fetch_trending_hacker_tools()
+        if tools:
+            msg = format_tool_alert(tools[0])
+            send_telegram_message(msg)
+            print(f"[+] Sent trending tool alert for {tools[0]['name']}")
+        else:
+            print("[-] No trending tools found.")
+        sys.exit(0)
+
     is_test = "--test" in sys.argv
     run_sync(test_mode=is_test)
