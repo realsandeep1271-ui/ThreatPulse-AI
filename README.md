@@ -39,15 +39,28 @@ Developed by **Sandeep Yadav** ([@realsandeep1271-ui](https://github.com/realsan
 
 ---
 
-## 🌟 What Makes This Bot Better?
+## 🌟 5 Powerhouse Features Built-in
 
-| Feature | Standard CVE Trackers | Sandeep's Cyber Intel Bot |
+| Feature | Description | Trigger |
 |:---|:---|:---|
-| **Noise Filtering** | Dumps 30,000+ useless CVEs/year | **Strict CISA KEV** (Only actively exploited in the wild) |
-| **Exploit PoC Code** | ❌ No PoC links | **✅ Auto-searches GitHub for working exploits & repositories** |
-| **Weaponization Odds** | ❌ Just basic CVSS score | **✅ FIRST.org EPSS Exploit Likelihood Score (%)** |
-| **Hosting Cost** | Requires paid VPS / Docker server | **✅ 100% Free 24/7/365 via GitHub Actions** |
-| **Ransomware Tracking** | ❌ None | **✅ Identifies associated ransomware campaigns** |
+| **1. 🚨 CISA Zero-Day & 1-Day Radar** | Live exploited bugs + FIRST EPSS likelihood + GitHub PoC exploit links | Automated Every 30 Mins |
+| **2. 🎯 1-Minute Bug Bounty Playbook** | High-impact real-world bypasses (403, IDOR, SSRF, CORS, OAuth) | Daily & on `/tip` command |
+| **3. 🤖 Interactive Student Bot** | Students can query `/cve`, `/tool`, `/tip`, `/news`, `/labs` directly in chat | Real-time |
+| **4. 🛠️ Trending Hacker Arsenal** | GitHub search for trending open-source red-team & pentest repositories | Quiet-day rotation & on `/tool` |
+| **5. ⚡ Cyber News in 60 Seconds** | Breaking cybersecurity headlines curated from live RSS feeds | Breaking updates & on `/news` |
+
+---
+
+## 🎮 Student Command Menu (In Telegram)
+
+Students can interact with the bot in any group, channel, or direct message:
+
+- `/cve <keyword>` — Search for recent exploited vulnerabilities (e.g. `/cve windows`, `/cve apple`)
+- `/tool <keyword>` — Discover top trending hacker tools on GitHub (e.g. `/tool osint`, `/tool recon`)
+- `/tip` — Receive today's 1-Minute Bug Bounty Trick
+- `/news` — Breaking cyber threat news in 60 seconds
+- `/labs` — Free hands-on labs, rooms, and certification vouchers
+- `/help` — Display the full interactive menu
 
 ---
 
