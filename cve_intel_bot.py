@@ -32,7 +32,7 @@ def send_telegram_message(message: str, chat_id: str = TELEGRAM_CHAT_ID, reply_t
         payload["reply_to_message_id"] = reply_to_id
 
     data = urllib.parse.urlencode(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"User-Agent": "CyberIntelBot/2.0"})
+    req = urllib.request.Request(url, data=data, headers={"User-Agent": "CyberIntelBot/2.5"})
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return json.loads(resp.read().decode())
@@ -51,8 +51,9 @@ def load_bot_state():
     return {
         "last_update_id": 0,
         "last_tip_date": "",
-        "last_news_id": "",
-        "last_tool_name": ""
+        "last_news_date": "",
+        "last_tool_date": "",
+        "last_extension_date": ""
     }
 
 def save_bot_state(state):
@@ -62,43 +63,43 @@ def save_bot_state(state):
     except Exception as e:
         print(f"[-] Failed to save bot state: {e}")
 
-# ================= FEATURE 1: BUG BOUNTY TIPS (DAILY) =================
+# ================= 1. BUG BOUNTY PLAYBOOK TIPS =================
 BUG_BOUNTY_TIPS = [
     {
         "title": "403 Forbidden Authorization Bypass via Headers",
-        "trick": "Agar target website par `/admin` ya kisi sensitive endpoint par `403 Forbidden` mile, toh request me ye headers inject karo:\n\n`X-Forwarded-For: 127.0.0.1`\n`X-Original-URL: /admin`\n`X-Rewrite-URL: /admin`\n`X-Custom-IP-Authorization: 127.0.0.1`\n\nKayi Reverse Proxies aur WAFs internal request samajh kar access de dete hain!",
-        "impact": "Authentication / Authorization Bypass (High/Critical)"
+        "trick": "Agar target website par `/admin` ya sensitive endpoint par `403 Forbidden` mile, toh ye headers inject karo:\n\n• `X-Forwarded-For: 127.0.0.1`\n• `X-Original-URL: /admin`\n• `X-Rewrite-URL: /admin`\n• `X-Custom-IP-Authorization: 127.0.0.1`\n\nWAFs internal loopback samajh kar allow kar dete hain!",
+        "impact": "Authentication / Authorization Bypass (Critical P1)"
     },
     {
         "title": "IDOR Parameter Tampering with Numeric vs JSON",
-        "trick": "Agar application `GET /api/user/101` block kar rahi hai, toh parameter type change karo:\n\n1. `GET /api/user?id=102`\n2. `POST /api/user` with JSON `{\"id\": [102]}`\n3. `GET /api/user/101.json`\n\nBackend parsers me type confusion ki wajah se IDOR bypass ho jata hai!",
+        "trick": "Agar application `GET /api/user/101` block kar rahi hai, toh parameter type change karo:\n\n1. `GET /api/user?id=102`\n2. `POST /api/user` with JSON `{\"id\": [102]}`\n3. `GET /api/user/101.json`\n\nBackend type confusion se doosre user ka data khul jata hai!",
         "impact": "Insecure Direct Object Reference (P1/P2)"
     },
     {
         "title": "SSRF Cloud Metadata Exfiltration",
-        "trick": "Agar target par PDF generator, URL preview, ya Webhook URL input mile, toh cloud metadata query test karo:\n\n• AWS: `http://169.254.169.254/latest/meta-data/iam/security-credentials/`\n• GCP: `http://metadata.google.internal/computeMetadata/v1/` with header `Metadata-Flavor: Google`\n• DigitalOcean: `http://169.254.169.254/metadata/v1.json`",
+        "trick": "Agar target par PDF generator, URL preview, ya Webhook URL input mile, toh cloud metadata query test karo:\n\n• AWS: `http://169.254.169.254/latest/meta-data/iam/security-credentials/`\n• GCP: `http://metadata.google.internal/computeMetadata/v1/` (Header: `Metadata-Flavor: Google`)\n• DigitalOcean: `http://169.254.169.254/metadata/v1.json`",
         "impact": "Full Cloud Account Takeover (Critical P1)"
     },
     {
         "title": "CORS Misconfiguration Account Takeover",
-        "trick": "Request me `Origin: https://evil.com` ya `Origin: null` bhej kar dekho.\nAgar response me ye headers aayein:\n\n`Access-Control-Allow-Origin: https://evil.com`\n`Access-Control-Allow-Credentials: true`\n\nToh aap victim ke browser se private API data aur auth tokens chura sakte ho!",
+        "trick": "Request me `Origin: https://evil.com` ya `Origin: null` bhej kar dekho.\nAgar response me ye headers aayein:\n\n`Access-Control-Allow-Origin: https://evil.com`\n`Access-Control-Allow-Credentials: true`\n\nToh victim ke private sessions aur dashboard data ko chura sakte ho!",
         "impact": "Cross-Origin Data Theft (Medium/High)"
     },
     {
         "title": "Hidden Sensitive Git/Env Exposure",
-        "trick": "Subdomain recon ke baad hamesha automation se ye paths scan karo:\n\n• `/.git/config` ya `/.git/HEAD`\n• `/.env`\n• `/swagger.json` ya `/v2/api-docs`\n• `/actuator/env` (Spring Boot Actuator)\n\nInse aksar direct database passwords aur secret AWS keys leak ho jaati hain!",
+        "trick": "Subdomain recon ke baad ye sensitive endpoints automate karo:\n\n• `/.git/config` ya `/.git/HEAD`\n• `/.env`\n• `/swagger.json` ya `/v2/api-docs`\n• `/actuator/env` (Spring Boot Actuator)\n\nInse aksar live DB passwords aur AWS keys leak hoti hain!",
         "impact": "Sensitive Information Disclosure (P1/P2)"
     },
     {
         "title": "Open Redirect to OAuth Token Hijacking",
-        "trick": "Agar kisi login portal me `redirect_uri=https://target.com/callback` ho, toh try karo:\n\n`redirect_uri=https://target.com.evil.com`\n`redirect_uri=https://target.com/callback@evil.com`\n`redirect_uri=https://target.com/callback/..;/evil.com`\n\nVictim ka OAuth token sidha aapke controlled server par aa jayega!",
+        "trick": "Agar kisi login portal me `redirect_uri=https://target.com/callback` ho, toh try karo:\n\n• `redirect_uri=https://target.com.evil.com`\n• `redirect_uri=https://target.com/callback@evil.com`\n• `redirect_uri=https://target.com/callback/..;/evil.com`\n\nVictim ka OAuth token sidha aapke controlled server par dump ho jata hai!",
         "impact": "One-Click Account Takeover (Critical P1)"
     }
 ]
 
 def format_bug_bounty_tip(tip: dict):
     return (
-        f"🎯 *BUG BOUNTY TIP OF THE DAY*\n"
+        f"🎯 *DAILY BUG BOUNTY TIP OF THE DAY*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🔥 *Topic:* `{tip['title']}`\n\n"
         f"💡 *The Technique:*\n{tip['trick']}\n\n"
@@ -107,49 +108,61 @@ def format_bug_bounty_tip(tip: dict):
         f"🛡️ *Sandeep's Bug Bounty Playbook*"
     )
 
-# ================= FEATURE 3: FREE LABS & CERTIFICATIONS =================
-FREE_LABS_RESOURCES = [
+# ================= 2. HACKER BROWSER EXTENSIONS & TOOLS =================
+HACKER_EXTENSIONS = [
     {
-        "title": "PortSwigger Web Security Academy",
-        "type": "100% Free Hands-on Lab",
-        "desc": "Burp Suite ki official academy jahan SQLi, XSS, SSRF, aur OAuth ke 200+ real-world interactive labs free hain.",
-        "url": "https://portswigger.net/web-security"
+        "name": "HackTools (All-in-One Web Pentesting Extension)",
+        "browser": "Chrome & Firefox",
+        "desc": "Web pentesting ke liye one-click reverse shells, SQLi payloads, XSS polyglots, base64 encoder/decoder sab browser me provide karta hai.",
+        "url": "https://github.com/LasCC/Hack-Tools"
     },
     {
-        "title": "TryHackMe Free Community Rooms",
-        "type": "Free Linux & Pentesting Practice",
-        "desc": "Intro to Offensive Security, Linux Fundamentals, aur Nmap rooms bilkul free chalte hain bina kisi credit card ke.",
-        "url": "https://tryhackme.com"
+        "name": "FoxyProxy Standard",
+        "browser": "Chrome & Firefox",
+        "desc": "Burp Suite, OWASP ZAP, aur Tor ke beech instant 1-click proxy switching ke liye duniya ka sabse zaroori pentesting add-on.",
+        "url": "https://getfoxyproxy.org/"
     },
     {
-        "title": "OverTheWire (Bandit Wargames)",
-        "type": "Free Command-Line Security Game",
-        "desc": "Linux CLI, SSH, aur basic exploitation seekhne ke liye duniya ka sabse best free wargame.",
-        "url": "https://overthewire.org/wargames/bandit/"
+        "name": "Wappalyzer / WhatRuns",
+        "browser": "Chrome & Firefox",
+        "desc": "Website par kaun sa CMS (WordPress, Joomla), Web Framework (React, Django), backend server (Nginx, Apache), aur programming language chal rahi hai, instant reveal karta hai.",
+        "url": "https://www.wappalyzer.com/"
     },
     {
-        "title": "Cisco Networking Academy Cybersecurity Essentials",
-        "type": "Free Certification Course",
-        "desc": "Cisco dwara official free cybersecurity fundamentals course with digital badge for LinkedIn/Resume.",
-        "url": "https://www.skillsforall.com/"
+        "name": "Cookie-Editor",
+        "browser": "Chrome & Firefox",
+        "desc": "Session cookies ko manually edit, add, delete ya import/export karne ke liye best tool — Auth Bypass aur Session Hijacking testing me mandatory hai.",
+        "url": "https://cookie-editor.cgagnier.ca/"
+    },
+    {
+        "name": "DotGit (Exposed .git Finder)",
+        "browser": "Chrome & Firefox",
+        "desc": "Jab aap kisi website ko browse karte ho, yeh automatically check karta hai ki kya website par `/.git/` folder expose hai, aur source code download karne ka alert deta hai.",
+        "url": "https://github.com/davtur19/DotGit"
+    },
+    {
+        "name": "ModHeader (Modify HTTP Headers)",
+        "browser": "Chrome & Firefox",
+        "desc": "Browser se direct custom headers (jaise `X-Forwarded-For`, `Authorization: Bearer`, `Custom-Token`) inject karke request bhejne ke liye sabse fast extension.",
+        "url": "https://modheader.com/"
     }
 ]
 
-def format_free_lab_alert(lab: dict):
+def format_extension_alert(ext: dict):
     return (
-        f"📢 *FREE CYBERSECURITY LAB & CERTIFICATION RADAR*\n"
+        f"🧩 *MUST-HAVE HACKER BROWSER EXTENSION*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🎓 *Resource:* `{lab['title']}`\n"
-        f"🏷️ *Type:* {lab['type']}\n\n"
-        f"📖 *Why Students Love It:*\n{lab['desc']}\n\n"
-        f"🔗 *Start Free Learning:*\n[{lab['url']}]({lab['url']})\n"
+        f"🔥 *Extension:* `{ext['name']}`\n"
+        f"🌐 *Platform:* `{ext['browser']}`\n\n"
+        f"📖 *Why Every Hacker Needs It:*\n{ext['desc']}\n\n"
+        f"🔗 *Download & Install:*\n[{ext['url']}]({ext['url']})\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🛡️ *Sandeep's Student Career Hub*"
+        f"🛡️ *Sandeep's Web Pentest Arsenal*"
     )
 
-# ================= FEATURE 4: TRENDING HACKER ARSENAL =================
+# ================= 3. TRENDING HACKER TOOLS RADAR =================
 def fetch_trending_hacker_tools(keyword="security"):
-    query = urllib.parse.quote(f"topic:{keyword} stars:>300")
+    query = urllib.parse.quote(f"topic:{keyword} stars:>400")
     url = f"https://api.github.com/search/repositories?q={query}&sort=updated&order=desc&per_page=3"
     req = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -183,7 +196,7 @@ def format_tool_alert(tool: dict):
         f"🛡️ *Sandeep's Hacker Arsenal Radar*"
     )
 
-# ================= FEATURE 5: CYBER NEWS IN 60 SECONDS =================
+# ================= 4. CORPORATE & GLOBAL CYBER NEWS =================
 def fetch_latest_cyber_news():
     req = urllib.request.Request(THN_RSS_URL, headers={"User-Agent": "Mozilla/5.0"})
     news_items = []
@@ -191,8 +204,8 @@ def fetch_latest_cyber_news():
         with urllib.request.urlopen(req, timeout=10) as resp:
             tree = ET.fromstring(resp.read())
             channel = tree.find("channel")
-            if channel:
-                for item in channel.findall("item")[:2]:
+            if channel is not None:
+                for item in channel.findall("item")[:3]:
                     title = item.find("title").text if item.find("title") is not None else ""
                     link = item.find("link").text if item.find("link") is not None else ""
                     desc = item.find("description").text if item.find("description") is not None else ""
@@ -208,16 +221,16 @@ def fetch_latest_cyber_news():
 
 def format_news_alert(news_item: dict):
     return (
-        f"⚡ *CYBER NEWS IN 60 SECONDS*\n"
+        f"⚡ *GLOBAL & CORPORATE THREAT INTELLIGENCE NEWS*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🚨 *Headline:* {news_item['title']}\n\n"
-        f"📝 *Quick Summary:*\n{news_item['desc']}\n\n"
-        f"🔗 *Full Source:*\n[{news_item['link']}]({news_item['link']})\n"
+        f"📝 *Executive Summary:*\n{news_item['desc']}\n\n"
+        f"🔗 *Full Official Investigation:*\n[{news_item['link']}]({news_item['link']})\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🛡️ *Sandeep's Cyber Threat News*"
     )
 
-# ================= CISA KEV & CVE CORE =================
+# ================= 5. CISA KEV & CVE CORE =================
 def fetch_cisa_kev():
     urls = [
         "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json",
@@ -249,7 +262,7 @@ def fetch_cisa_kev():
 def find_github_pocs(cve_id: str):
     query = urllib.parse.quote(f"{cve_id} exploit")
     url = f"https://api.github.com/search/repositories?q={query}&sort=stars&order=desc&per_page=3"
-    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/2.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/2.5"})
     pocs = []
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -266,7 +279,7 @@ def find_github_pocs(cve_id: str):
 
 def fetch_epss_score(cve_id: str):
     url = f"https://api.first.org/data/v1/epss?cve={cve_id}"
-    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/2.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "CyberIntelBot/2.5"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
@@ -316,9 +329,8 @@ def format_cve_alert(cve_item: dict, pocs: list, epss: str):
     )
     return alert
 
-# ================= FEATURE 2: INTERACTIVE COMMAND HANDLER =================
+# ================= 6. INTERACTIVE STUDENT COMMAND HANDLER =================
 def process_interactive_commands():
-    """Polls recent messages and responds to student commands like /cve, /tool, /tip, /news, /help."""
     state = load_bot_state()
     offset = state.get("last_update_id", 0) + 1
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates?offset={offset}&timeout=5"
@@ -350,31 +362,30 @@ def process_interactive_commands():
         cmd = text.split()[0].lower()
         args = text[len(cmd):].strip()
 
-        # Handle Commands
         if cmd in ["/help", "/start", "/menu"]:
             help_text = (
                 f"🤖 *Cyber Threat Intel Bot — Student Command Menu*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"Hi {msg.get('from', {}).get('first_name', 'Hacker')}! You can query me using these commands:\n\n"
-                f"📌 `/cve <keyword>` — Search latest exploited CVEs (e.g., `/cve windows` or `/cve apple`)\n"
-                f"🛠️ `/tool <keyword>` — Discover top trending hacker tools (e.g., `/tool osint`)\n"
+                f"📌 `/cve <keyword>` — Search latest exploited CVEs (e.g. `/cve windows` or `/cve apple`)\n"
+                f"🛠️ `/tool <keyword>` — Discover top trending hacker tools (e.g. `/tool osint`)\n"
+                f"🧩 `/extension` — Get today's top hacker browser extension\n"
                 f"🎯 `/tip` — Get today's 1-Minute Bug Bounty Trick\n"
-                f"⚡ `/news` — Breaking cybersecurity news in 60 seconds\n"
-                f"🎓 `/labs` — Free cybersecurity labs & certification vouchers\n\n"
+                f"⚡ `/news` — Breaking corporate & cyber news in 60 seconds\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"👨‍💻 *Created by Sandeep Yadav (@realsandeep1271-ui)*"
             )
             send_telegram_message(help_text, chat_id=chat_id, reply_to_id=msg_id)
 
-        elif cmd == "/tip" or cmd == "/bounty":
+        elif cmd in ["/tip", "/bounty"]:
             idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
             tip = BUG_BOUNTY_TIPS[idx]
             send_telegram_message(format_bug_bounty_tip(tip), chat_id=chat_id, reply_to_id=msg_id)
 
-        elif cmd == "/labs" or cmd == "/free":
-            idx = datetime.datetime.now().day % len(FREE_LABS_RESOURCES)
-            lab = FREE_LABS_RESOURCES[idx]
-            send_telegram_message(format_free_lab_alert(lab), chat_id=chat_id, reply_to_id=msg_id)
+        elif cmd in ["/extension", "/ext"]:
+            idx = datetime.datetime.now().day % len(HACKER_EXTENSIONS)
+            ext = HACKER_EXTENSIONS[idx]
+            send_telegram_message(format_extension_alert(ext), chat_id=chat_id, reply_to_id=msg_id)
 
         elif cmd == "/news":
             news = fetch_latest_cyber_news()
@@ -406,79 +417,99 @@ def process_interactive_commands():
 
     save_bot_state(state)
 
-# ================= MAIN SCHEDULER & BROADCAST LOOP =================
+# ================= MULTI-TRACK DAILY DISPATCH ENGINE =================
 def run_sync(test_mode=False):
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    state = load_bot_state()
+
     print("[*] Processing interactive student commands...")
     process_interactive_commands()
 
-    print("[*] Fetching latest CISA KEV feed...")
+    # 1. TRACK: REAL-TIME CISA CVE RADAR
+    print("[*] Checking CISA KEV Exploited Vulnerabilities...")
     kev_data = fetch_cisa_kev()
-    if not kev_data or "vulnerabilities" not in kev_data:
-        print("[-] Failed to load CISA feed.")
-        return
+    if kev_data and "vulnerabilities" in kev_data:
+        vulns = kev_data["vulnerabilities"]
+        all_cve_ids = [v["cveID"] for v in vulns if "cveID" in v]
 
-    vulns = kev_data["vulnerabilities"]
-    all_cve_ids = [v["cveID"] for v in vulns if "cveID" in v]
+        seen_ids = set()
+        if os.path.exists(SEEN_FILE):
+            try:
+                with open(SEEN_FILE, "r", encoding="utf-8") as f:
+                    seen_ids = set(json.load(f))
+            except Exception:
+                seen_ids = set()
 
-    seen_ids = set()
-    if os.path.exists(SEEN_FILE):
-        try:
-            with open(SEEN_FILE, "r", encoding="utf-8") as f:
-                seen_ids = set(json.load(f))
-        except Exception:
-            seen_ids = set()
+        if not seen_ids and not test_mode:
+            print(f"[*] First run: Storing {len(all_cve_ids)} existing CVEs as baseline...")
+            with open(SEEN_FILE, "w", encoding="utf-8") as f:
+                json.dump(all_cve_ids, f)
+            send_telegram_message("✅ *24/7 Multi-Track Threat Intel Engine Active!* Baseline established.")
+            return
 
-    if not seen_ids and not test_mode:
-        print(f"[*] First run: Storing {len(all_cve_ids)} existing CVEs as baseline...")
-        with open(SEEN_FILE, "w", encoding="utf-8") as f:
-            json.dump(all_cve_ids, f)
-        send_telegram_message("✅ *24/7 Cyber Threat Intel Bot Activated!* Baseline established with current CISA KEV records. Watching for newly added exploits!")
-        return
+        if test_mode:
+            cves_2026 = [v for v in vulns if "CVE-2026-" in v.get("cveID", "")]
+            cves_2026.sort(key=lambda x: x.get("dateAdded", ""), reverse=True)
+            new_cves = [cves_2026[0]] if cves_2026 else [vulns[-1]]
+        else:
+            new_cves = [v for v in vulns if v.get("cveID") and v["cveID"] not in seen_ids]
+            new_cves.sort(key=lambda x: x.get("dateAdded", ""), reverse=True)
 
-    if test_mode:
-        print("[*] TEST MODE: Selecting the freshest 2026 CVE...")
-        cves_2026 = [v for v in vulns if "CVE-2026-" in v.get("cveID", "")]
-        cves_2026.sort(key=lambda x: x.get("dateAdded", ""), reverse=True)
-        new_cves = [cves_2026[0]] if cves_2026 else [vulns[-1]]
-    else:
-        new_cves = [v for v in vulns if v.get("cveID") and v["cveID"] not in seen_ids]
-        new_cves.sort(key=lambda x: x.get("dateAdded", ""), reverse=True)
-
-    # If new CVEs exist, alert immediately!
-    if new_cves:
-        print(f"[!] Detected {len(new_cves)} new CVE(s) to process!")
-        for item in new_cves[:3]:
-            cve_id = item.get("cveID")
-            print(f"[*] Processing {cve_id}...")
-            pocs = find_github_pocs(cve_id)
-            epss = fetch_epss_score(cve_id)
-            alert_msg = format_cve_alert(item, pocs, epss)
-            send_telegram_message(alert_msg)
-            print(f"[+] Alert sent for {cve_id}")
+        if new_cves:
+            print(f"[!] Broadcasting {len(new_cves)} new CVE alert(s)...")
+            for item in new_cves[:2]:
+                cve_id = item.get("cveID")
+                pocs = find_github_pocs(cve_id)
+                epss = fetch_epss_score(cve_id)
+                alert_msg = format_cve_alert(item, pocs, epss)
+                send_telegram_message(alert_msg)
+                if not test_mode:
+                    seen_ids.add(cve_id)
 
             if not test_mode:
-                seen_ids.add(cve_id)
+                with open(SEEN_FILE, "w", encoding="utf-8") as f:
+                    json.dump(list(seen_ids), f)
+                print("[+] Updated seen_cves.json successfully.")
+        else:
+            print("[+] No new CVEs detected right now.")
 
-        if not test_mode:
-            with open(SEEN_FILE, "w", encoding="utf-8") as f:
-                json.dump(list(seen_ids), f)
-            print("[+] Updated seen_cves.json successfully.")
+    # 2. TRACK: DAILY BUG BOUNTY TRICK (Guaranteed Daily Drop)
+    if state.get("last_tip_date") != today_str:
+        print("[*] Broadcasting Daily Bug Bounty Trick...")
+        idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
+        tip = BUG_BOUNTY_TIPS[idx]
+        send_telegram_message(format_bug_bounty_tip(tip))
+        state["last_tip_date"] = today_str
+        save_bot_state(state)
+        print("[+] Daily Bug Bounty trick sent!")
 
-    else:
-        print("[+] No new CVEs detected.")
-        # If quiet day, check if we should broadcast daily Bug Bounty Tip
-        state = load_bot_state()
-        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-        if state.get("last_tip_date") != today_str:
-            print("[*] Broadcasting Daily Bug Bounty Tip...")
-            idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
-            tip = BUG_BOUNTY_TIPS[idx]
-            send_telegram_message(format_bug_bounty_tip(tip))
-            state["last_tip_date"] = today_str
+    # 3. TRACK: DAILY HACKER BROWSER EXTENSION
+    if state.get("last_extension_date") != today_str:
+        print("[*] Broadcasting Daily Hacker Browser Extension...")
+        idx = datetime.datetime.now().day % len(HACKER_EXTENSIONS)
+        ext = HACKER_EXTENSIONS[idx]
+        send_telegram_message(format_extension_alert(ext))
+        state["last_extension_date"] = today_str
+        save_bot_state(state)
+        print("[+] Daily Hacker Extension sent!")
+
+    # 4. TRACK: CORPORATE & GLOBAL CYBER NEWS
+    if state.get("last_news_date") != today_str:
+        print("[*] Broadcasting Corporate Threat & Cyber News...")
+        news = fetch_latest_cyber_news()
+        if news:
+            send_telegram_message(format_news_alert(news[0]))
+            state["last_news_date"] = today_str
             save_bot_state(state)
-            print("[+] Daily Bug Bounty tip sent!")
+            print("[+] Corporate Cyber News sent!")
 
 if __name__ == "__main__":
+    if "--extension" in sys.argv:
+        idx = datetime.datetime.now().day % len(HACKER_EXTENSIONS)
+        send_telegram_message(format_extension_alert(HACKER_EXTENSIONS[idx]))
+        print("[+] Sent Extension Alert")
+        sys.exit(0)
+
     if "--tip" in sys.argv:
         idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
         send_telegram_message(format_bug_bounty_tip(BUG_BOUNTY_TIPS[idx]))
@@ -490,19 +521,6 @@ if __name__ == "__main__":
         if news:
             send_telegram_message(format_news_alert(news[0]))
             print("[+] Sent Cyber News")
-        sys.exit(0)
-
-    if "--tool" in sys.argv:
-        tools = fetch_trending_hacker_tools()
-        if tools:
-            send_telegram_message(format_tool_alert(tools[0]))
-            print("[+] Sent Trending Tool")
-        sys.exit(0)
-
-    if "--labs" in sys.argv:
-        idx = datetime.datetime.now().day % len(FREE_LABS_RESOURCES)
-        send_telegram_message(format_free_lab_alert(FREE_LABS_RESOURCES[idx]))
-        print("[+] Sent Free Lab Alert")
         sys.exit(0)
 
     is_test = "--test" in sys.argv
