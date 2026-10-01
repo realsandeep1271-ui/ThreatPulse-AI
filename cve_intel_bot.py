@@ -7,8 +7,13 @@ import datetime
 import xml.etree.ElementTree as ET
 
 # ================= CONFIGURATION =================
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8786341409:AAHySbQU0xWdYi0HEqFdBo31xp_3Z9tuCK0")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1004461177482")  # Supergroup
+# Token is loaded securely from GitHub Secrets / Environment Variable
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1004461177482").strip()  # Supergroup
+
+if not TELEGRAM_BOT_TOKEN:
+    # Try reading from local .env if available
+    pass
 
 CISA_KEV_URL = "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json"
 THN_RSS_URL = "https://feeds.feedburner.com/TheHackersNews"
