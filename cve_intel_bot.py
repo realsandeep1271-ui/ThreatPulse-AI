@@ -7,9 +7,9 @@ import datetime
 import xml.etree.ElementTree as ET
 
 # ================= CONFIGURATION =================
-# Token is loaded securely from GitHub Secrets / Environment Variable
+# Secrets and Chat IDs are loaded securely from Environment Variables / GitHub Secrets
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1004461177482").strip()  # Supergroup
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 if not TELEGRAM_BOT_TOKEN:
     # Try reading from local .env if available
@@ -26,12 +26,17 @@ CISA_LOCAL_CACHE = os.path.join(BASE_DIR, "cisa_kev_cache.json")
 STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
 
 # ================= TELEGRAM API HELPERS =================
-def send_telegram_message(message: str, chat_id: str = TELEGRAM_CHAT_ID, reply_to_id: int = None):
+def send_telegram_message(message: str, chat_id: str = None, reply_to_id: int = None):
     """Sends a formatted markdown message to Telegram with auto-retry."""
     import time
+    target_chat = chat_id or TELEGRAM_CHAT_ID or os.getenv("TELEGRAM_CHAT_ID", "")
+    if not target_chat:
+        print("[-] Telegram Send Error: No TELEGRAM_CHAT_ID provided.")
+        return None
+
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": chat_id,
+        "chat_id": target_chat,
         "text": message,
         "parse_mode": "Markdown",
         "disable_web_page_preview": True
