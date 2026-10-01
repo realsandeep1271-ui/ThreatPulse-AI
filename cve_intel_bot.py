@@ -27,6 +27,10 @@ SEEN_FILE = os.path.join(BASE_DIR, "seen_cves.json")
 SEEN_GHSA_FILE = os.path.join(BASE_DIR, "seen_ghsa.json")
 SEEN_NEWS_FILE = os.path.join(BASE_DIR, "seen_news.json")
 SEEN_NUCLEI_FILE = os.path.join(BASE_DIR, "seen_nuclei.json")
+SEEN_BOUNTIES_FILE = os.path.join(BASE_DIR, "seen_bounties.json")
+SEEN_PROGRAMS_FILE = os.path.join(BASE_DIR, "seen_programs.json")
+H1_REPORTS_CSV_URL = "https://raw.githubusercontent.com/reddelexc/hackerone-reports/master/data.csv"
+CHAOS_PROGRAMS_URL = "https://raw.githubusercontent.com/projectdiscovery/public-bugbounty-programs/main/dist/data.json"
 CISA_LOCAL_CACHE = os.path.join(BASE_DIR, "cisa_kev_cache.json")
 STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
 
@@ -337,6 +341,98 @@ def format_nuclei_new_template_alert(tmpl: dict):
         f"👑 *Top 1% Bug Hunter Automation*"
     )
 
+# ================= 4B. HACKERONE DISCLOSED BOUNTIES & BUGCROWD RADAR =================
+def fetch_hackerone_disclosed_bounties():
+    """Fetches recently disclosed paid bounty reports from HackerOne using fast range request."""
+    import csv, io
+    reports = []
+    req = urllib.request.Request(
+        H1_REPORTS_CSV_URL,
+        headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-35000"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            text = r.read().decode("utf-8", errors="ignore")
+            reader = csv.DictReader(io.StringIO(text))
+            for row in reader:
+                if not row:
+                    continue
+                link = (row.get("link") or "").strip()
+                bounty_str = (row.get("bounty") or "0").strip()
+                try:
+                    bounty_val = float(bounty_str)
+                except ValueError:
+                    bounty_val = 0.0
+
+                if link and bounty_val > 0:
+                    reports.append({
+                        "program": (row.get("program") or "Unknown").strip(),
+                        "title": (row.get("title") or "No Title").strip(),
+                        "link": f"https://{link}" if not link.startswith("http") else link,
+                        "bounty": bounty_val,
+                        "vuln_type": (row.get("vuln_type") or "Security Vulnerability").strip()
+                    })
+    except Exception as e:
+        print(f"[-] Disclosed Bounties Fetch Error: {e}")
+    return reports
+
+def format_bounty_report_alert(report: dict):
+    bounty_usd = f"${report['bounty']:,.0f}"
+    bounty_inr = f"₹{int(report['bounty'] * 85):,}"
+    ai_breakdown = generate_ai_threat_breakdown(report['title'], f"Paid {bounty_usd} on {report['program']}", context="Bug Bounty Disclosed Writeup")
+    ai_block = ""
+    if ai_breakdown:
+        ai_block = f"🧠 *Gemini Pro Bounty Analysis:*\n{ai_breakdown}\n\n"
+
+    return (
+        f"💰 *HACKERONE DISCLOSED BOUNTY PAYOUT*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🏢 *Target Company:* `{report['program']}`\n"
+        f"💵 *Bounty Paid:* `{bounty_usd}` *(~{bounty_inr})*\n"
+        f"⚠️ *Bug Class:* `{report['vuln_type']}`\n\n"
+        f"📝 *Disclosed Report:* {report['title']}\n\n"
+        f"{ai_block}"
+        f"🔗 *Read Full Disclosed Report & POC:*\n[{report['link']}]({report['link']})\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👑 *Sandeep's Bug Bounty Hunter Radar*"
+    )
+
+def fetch_latest_bounty_programs():
+    """Fetches public bug bounty programs on HackerOne & Bugcrowd."""
+    programs = []
+    req = urllib.request.Request(CHAOS_PROGRAMS_URL, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read().decode())
+            for p in data.get("programs", []):
+                url = p.get("url", "")
+                if "hackerone.com" in url or "bugcrowd.com" in url:
+                    platform = "HackerOne" if "hackerone.com" in url else "Bugcrowd"
+                    programs.append({
+                        "name": p.get("name"),
+                        "url": url,
+                        "platform": platform,
+                        "bounty": p.get("bounty", False),
+                        "domains_count": len(p.get("domains", []))
+                    })
+    except Exception as e:
+        print(f"[-] Bounty Programs Fetch Error: {e}")
+    return programs
+
+def format_bounty_program_alert(prog: dict):
+    reward = "Cash Bounties ($$$)" if prog["bounty"] else "Hall of Fame / Swag"
+    return (
+        f"🎯 *NEW BUG BOUNTY PROGRAM LAUNCHED*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🏢 *Company:* `{prog['name']}`\n"
+        f"🌐 *Platform:* `{prog['platform']}`\n"
+        f"💰 *Rewards:* `{reward}`\n"
+        f"🎯 *In-Scope Target Assets:* `{prog['domains_count']} domains`\n\n"
+        f"🔗 *Official Program Scope & Rules:*\n[{prog['url']}]({prog['url']})\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"⚡ *Start Recon Before Others! — Sandeep Tracker*"
+    )
+
 # ================= 5. TOP 1% ELITE HACKER ARSENAL =================
 def check_nuclei_template(cve_id: str):
     """Checks if ProjectDiscovery Nuclei Template exists for this CVE."""
@@ -601,6 +697,8 @@ def process_interactive_commands():
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"Hi {msg.get('from', {}).get('first_name', 'Hacker')}! You can query me using these commands:\n\n"
                 f"🧠 `/ask <question>` — Ask Gemini Pro any hacking, bug bounty, or exploit doubt!\n"
+                f"💰 `/bounty` — Latest HackerOne disclosed bounty payout & writeup\n"
+                f"🎯 `/program <keyword>` — Search HackerOne/Bugcrowd bounty programs\n"
                 f"📌 `/cve <keyword>` — Search latest exploited CVEs (e.g. `/cve windows` or `/cve apple`)\n"
                 f"⚡ `/0day` — Day-1 Pre-Disclosure Advisories (GHSA Zero-Days)\n"
                 f"🎯 `/nuclei <cve>` — Check ready-made Nuclei scanner template\n"
@@ -612,6 +710,26 @@ def process_interactive_commands():
                 f"👑 *Engineered by Sandeep Yadav (@realsandeep1271-ui)*"
             )
             send_telegram_message(help_text, chat_id=chat_id, reply_to_id=msg_id)
+
+        elif cmd in ["/bounty", "/payout", "/disclosed"]:
+            bounties = fetch_hackerone_disclosed_bounties()
+            if bounties:
+                send_telegram_message(format_bounty_report_alert(bounties[0]), chat_id=chat_id, reply_to_id=msg_id)
+            else:
+                send_telegram_message("🔍 No disclosed bounty reports found right now.", chat_id=chat_id, reply_to_id=msg_id)
+
+        elif cmd in ["/program", "/target", "/scope"]:
+            keyword = args.lower().strip()
+            programs = fetch_latest_bounty_programs()
+            if keyword:
+                matched = [p for p in programs if keyword in p['name'].lower() or keyword in p['url'].lower()]
+            else:
+                matched = programs[:3]
+
+            if matched:
+                send_telegram_message(format_bounty_program_alert(matched[0]), chat_id=chat_id, reply_to_id=msg_id)
+            else:
+                send_telegram_message(f"🔍 No bug bounty program found matching `{keyword}`.", chat_id=chat_id, reply_to_id=msg_id)
 
         elif cmd in ["/ask", "/ai", "/mentor"]:
             query = args.strip()
@@ -843,6 +961,54 @@ def run_sync(test_mode=False):
         print("[+] Updated seen_nuclei.json successfully.")
     else:
         print("[+] No new Nuclei templates added right now.")
+
+    # 7. TRACK: HACKERONE DISCLOSED BOUNTY PAYOUT RADAR
+    seen_bounties = set()
+    if os.path.exists(SEEN_BOUNTIES_FILE):
+        try:
+            with open(SEEN_BOUNTIES_FILE, "r", encoding="utf-8") as bf:
+                seen_bounties = set(json.load(bf))
+        except Exception:
+            seen_bounties = set()
+
+    print("[*] Checking HackerOne Disclosed Bounty Payouts...")
+    bounties = fetch_hackerone_disclosed_bounties()
+    new_bounties = [b for b in bounties if b["link"] not in seen_bounties]
+    if new_bounties:
+        print(f"[!] Broadcasting {len(new_bounties)} new Disclosed Bounty Report(s)...")
+        for rep in new_bounties[:2]:
+            res = send_telegram_message(format_bounty_report_alert(rep))
+            if res:
+                seen_bounties.add(rep["link"])
+        with open(SEEN_BOUNTIES_FILE, "w", encoding="utf-8") as bf:
+            json.dump(list(seen_bounties), bf)
+        print("[+] Updated seen_bounties.json successfully.")
+    else:
+        print("[+] No new disclosed bounties right now.")
+
+    # 8. TRACK: HACKERONE & BUGCROWD NEW BUG BOUNTY PROGRAMS
+    seen_programs = set()
+    if os.path.exists(SEEN_PROGRAMS_FILE):
+        try:
+            with open(SEEN_PROGRAMS_FILE, "r", encoding="utf-8") as pf:
+                seen_programs = set(json.load(pf))
+        except Exception:
+            seen_programs = set()
+
+    print("[*] Checking HackerOne & Bugcrowd Bounty Programs...")
+    programs = fetch_latest_bounty_programs()
+    new_programs = [p for p in programs if p["url"] not in seen_programs]
+    if new_programs:
+        print(f"[!] Broadcasting {len(new_programs)} new Bug Bounty Program(s)...")
+        for prog in new_programs[:2]:
+            res = send_telegram_message(format_bounty_program_alert(prog))
+            if res:
+                seen_programs.add(prog["url"])
+        with open(SEEN_PROGRAMS_FILE, "w", encoding="utf-8") as pf:
+            json.dump(list(seen_programs), pf)
+        print("[+] Updated seen_programs.json successfully.")
+    else:
+        print("[+] No new Bug Bounty programs right now.")
 
 if __name__ == "__main__":
     if "--0day" in sys.argv:
