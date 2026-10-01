@@ -1,6 +1,6 @@
-# 🛡️ 24/7 Cyber Threat Intelligence & GitHub PoC Alert Bot
+# 🛡️ 24/7 AI-Powered Cyber Threat Intelligence & Bug Bounty Engine
 
-An automated, serverless Cybersecurity Threat Intelligence (CTI) engine that monitors actively exploited zero-day and 1-day vulnerabilities, predicts real-world weaponization likelihood, searches for working GitHub Proof-of-Concept (PoC) exploit scripts, and broadcasts instant real-time alerts to Telegram.
+An autonomous, serverless Cybersecurity Threat Intelligence (CTI) & Bounty Reconnaissance engine powered by **Google Gemini Pro**. The system continuously monitors actively exploited zero-day vulnerabilities, predicts exploit weaponization likelihood, checks ready-to-run Nuclei scanner templates, fetches patch commit diffs, ingests real-time threat news from THN & SANS ISC, and tracks live **HackerOne disclosed bounty payouts** and **Bugcrowd programs** with instant Telegram broadcast and interactive AI mentoring.
 
 Developed by **Sandeep Yadav** ([@realsandeep1271-ui](https://github.com/realsandeep1271-ui)) — *Security Researcher & Offensive Engineer*.
 
@@ -9,110 +9,133 @@ Developed by **Sandeep Yadav** ([@realsandeep1271-ui](https://github.com/realsan
 ## ⚡ Key Highlights & Architecture
 
 ```
-                  ┌─────────────────────────────────────────┐
-                  │          CISA KEV Feed (US Govt)        │
-                  │  (Known Exploited Vulnerabilities JSON) │
-                  └────────────────────┬────────────────────┘
-                                       │
-                                       ▼
-                  ┌─────────────────────────────────────────┐
-                  │    GitHub Actions (24/7 Serverless)     │
-                  │        Runs every 1 hour (cron)         │
-                  └────────────────────┬────────────────────┘
-                                       │
-                         ┌─────────────┴─────────────┐
-                         │                           │
-                         ▼                           ▼
-            ┌────────────────────────┐  ┌────────────────────────┐
-            │   FIRST.org EPSS API   │  │    GitHub Search API   │
-            │(Exploit Likelihood %)  │  │(Live Working PoC Code) │
-            └────────────┬───────────┘  └────────────┬───────────┘
-                         │                           │
-                         └─────────────┬─────────────┘
-                                       │
-                                       ▼
-                  ┌─────────────────────────────────────────┐
-                  │        Telegram Broadcast Bot           │
-                  │  (Instant Alerts with Clickable PoCs)   │
-                  └─────────────────────────────────────────┘
+                    ┌────────────────────────────────────────────────────────┐
+                    │               Multi-Source Ingestion Telemetry         │
+                    │   CISA KEV | GHSA Zero-Days | THN | SANS ISC | H1 Payouts│
+                    └───────────────────────────┬────────────────────────────┘
+                                                │
+                                                ▼
+                    ┌────────────────────────────────────────────────────────┐
+                    │           GitHub Actions (24/7 Cloud Serverless)       │
+                    │                  Runs every 30 Mins (cron)             │
+                    └───────────────────────────┬────────────────────────────┘
+                                                │
+            ┌───────────────────────────────────┼───────────────────────────────────┐
+            │                                   │                                   │
+            ▼                                   ▼                                   ▼
+┌────────────────────────┐          ┌────────────────────────┐          ┌────────────────────────┐
+│   FIRST.org EPSS API   │          │  ProjectDiscovery      │          │   Google Gemini Pro    │
+│ (Exploit Probability)  │          │  (Nuclei YAML Scanners)│          │   (AI Threat Reasoning)│
+└───────────┬────────────┘          └───────────┬────────────┘          └───────────┬────────────┘
+            │                                   │                                   │
+            └───────────────────────────────────┼───────────────────────────────────┘
+                                                │
+                                                ▼
+                    ┌────────────────────────────────────────────────────────┐
+                    │               Telegram Intelligence Bot                │
+                    │   • Real-Time Threat Alerts with Clickable PoCs        │
+                    │   • HackerOne Disclosed Payouts ($ & ₹)                │
+                    │   • Interactive AI Mentor (/ask <question>)            │
+                    └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🌟 8 Powerhouse Features (Top 1% Elite Edition)
+## 🌟 10 Powerhouse Engine Features (Top 1% Elite Edition)
 
-| Feature | Description | Target Audience | Trigger |
+| Feature | Description | Target Audience | Trigger Mode |
 |:---|:---|:---|:---|
-| **1. ⚡ Day-1 Zero-Days (GHSA)** | Early-warning pre-disclosure advisories before CISA KEV adds them | Top 1% Bug Hunters | Automated Every 30 Mins |
-| **2. 🎯 Nuclei Scanner Templates** | Ready-to-run `nuclei -t cves/` YAML links for 10,000-subdomain scans | Elite Bounty Hunters | With every CVE & `/nuclei` |
-| **3. 🔬 Root-Cause Patch Diffs** | Direct GitHub commit diff links (`+` and `-` lines) to analyze code fixes | Reverse Engineers | With every CVE/GHSA |
-| **4. 🚨 CISA Zero-Day & 1-Day Radar** | Live exploited bugs + FIRST EPSS likelihood + GitHub PoC exploit links | Red & Blue Teams | Automated Every 30 Mins |
-| **5. 🎯 1-Minute Bug Bounty Playbook** | High-impact real-world bypasses (403, IDOR, SSRF, CORS, OAuth) | Pentesters & Hunters | Daily & on `/tip` command |
-| **6. 🧩 Hacker Browser Extensions** | Must-have extensions (HackTools, FoxyProxy, Wappalyzer, Cookie-Editor) | Web Pentesters | Daily & on `/extension` |
-| **7. 🛠️ Trending Hacker Arsenal** | GitHub search for trending open-source red-team & pentest repositories | Security Researchers | Quiet-day rotation & on `/tool` |
-| **8. ⚡ Cyber News in 60 Seconds** | Breaking cybersecurity headlines curated from live RSS feeds | All Infosec Peers | Breaking updates & on `/news` |
+| **1. 🧠 Gemini Pro AI Threat Engine** | Generates 3-bullet offensive summaries: Root cause, Exploit TTPs, and Hunter Action items | Red Teams & Hunters | Automated on every alert & `/ask` |
+| **2. 💰 HackerOne Bounty Payout Tracker** | Real-time tracking of who received bounties, company target, dollar & rupee payouts, and PoC links | Bug Bounty Hunters | Continuous Stream & `/bounty` |
+| **3. 🎯 Bugcrowd & H1 New Programs Radar** | Instant alerts whenever a company launches or expands a public bug bounty program | Recon Hunters | Continuous Stream & `/program` |
+| **4. ⚡ Day-1 Zero-Days (GHSA)** | Early-warning pre-disclosure advisories before CISA KEV indexes them | Elite 0-Day Hunters | Automated Every 30 Mins & `/0day` |
+| **5. 🎯 Nuclei Scanner Template Radar** | Ready-to-run `nuclei -t cves/` YAML links and newly added ProjectDiscovery community templates | Automation Hunters | Real-time & `/nuclei` |
+| **6. 🔬 Root-Cause Patch Diffs** | Direct GitHub commit diff links (`+` and `-` lines) to analyze code fixes and bypasses | Vulnerability Researchers | Attached to CVE alerts |
+| **7. 📡 Real-Time Multi-Source Cyber Stream** | Breaking cybersecurity headlines curated from **The Hacker News** and **SANS Internet Storm Center** | Infosec Community | Continuous Stream & `/news` |
+| **8. 🚨 CISA Zero-Day & 1-Day Radar** | Actively exploited CVEs + FIRST EPSS likelihood metrics + Live GitHub PoC exploit links | SOC Analysts & Pentesters | Automated Every 30 Mins & `/cve` |
+| **9. 🎯 1-Minute Bug Bounty Playbook** | High-impact real-world bypasses (403 Forbidden, IDOR, SSRF, CORS, OAuth token theft) | Web Pentesters | Daily Drop & `/tip` |
+| **10. 🧩 Hacker Browser Extensions** | Handpicked extensions (HackTools, FoxyProxy, Wappalyzer, Cookie-Editor) | Application Testers | Daily Drop & `/extension` |
 
 ---
 
-## 🎮 Interactive Command Menu (In Telegram)
+## 🎮 Interactive Telegram Command Menu
 
-Students & Researchers can interact with the bot in any group, channel, or direct message:
+Members can interact with the bot in any group, channel, or direct message:
 
-- `/0day` — Trigger latest Day-1 Pre-Disclosure Advisories (GHSA Zero-Days)
-- `/nuclei <cve>` — Check ready-made Nuclei scanner template (e.g. `/nuclei CVE-2026-0545`)
-- `/cve <keyword>` — Search latest exploited vulnerabilities (e.g. `/cve windows`, `/cve apple`)
-- `/tool <keyword>` — Discover top trending hacker tools on GitHub (e.g. `/tool osint`, `/tool recon`)
-- `/extension` — Get today's top hacker browser extension
-- `/tip` — Receive today's 1-Minute Bug Bounty Trick
-- `/news` — Breaking cyber threat news in 60 seconds
-- `/help` — Display the full interactive menu
+- `🧠 /ask <query>` — Ask Gemini Pro any hacking, recon, or bug bounty question!
+- `💰 /bounty` — View latest HackerOne disclosed bounty payout with amount & writeup
+- `🎯 /program <target>` — Search active HackerOne & Bugcrowd targets (e.g. `/program shopify`)
+- `⚡ /0day` — Trigger latest Day-1 Pre-Disclosure Advisories (GHSA Zero-Days)
+- `🎯 /nuclei <cve>` — Check ready-made Nuclei scanner template (e.g. `/nuclei CVE-2026-0545`)
+- `📌 /cve <keyword>` — Search latest exploited vulnerabilities (e.g. `/cve windows`, `/cve apple`)
+- `🛠️ /tool <keyword>` — Discover top trending hacker tools on GitHub (e.g. `/tool osint`, `/tool recon`)
+- `🧩 /extension` — Get today's top hacker browser extension
+- `🎯 /tip` — Receive today's 1-Minute Bug Bounty Trick
+- `⚡ /news` — Breaking corporate & cyber news stream in real time
+- `🤖 /help` — Display the full interactive menu
 
 ---
 
-## 🚀 Telegram Alert Preview
+## 🚀 Live Telegram Alert Previews
 
+### 1. HackerOne Disclosed Payout Alert
 ```text
-🚨 NEW CISA EXPLOITED VULNERABILITY ALERT
+💰 HACKERONE DISCLOSED BOUNTY PAYOUT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 CVE ID: CVE-2026-86950
-🏢 Vendor & Product: Apple — Multiple Products
-⚠️ Vulnerability: Apple Multiple Products Memory Corruption Flaw
-📅 Date Added: 2026-09-29 | Due: 2026-10-19
+🏢 Target Company: 8x8
+💵 Bounty Paid: $3,000 (~₹2,55,000)
+⚠️ Bug Class: Deserialization Vulnerability
+📝 Disclosed Report: connect.8x8.com Automation Builder RCE
 
-📖 Summary:
-Apple iOS, iPadOS, and macOS contain a memory corruption flaw that allows arbitrary code execution.
+🧠 Gemini Pro Bounty Analysis:
+• 🎯 Target: Webhook Automation Builder
+• ⚡ Attack Vector: Java object deserialization leading to remote code execution.
+• 🛡️ Hunter Tip: Test custom integrations accepting serialized base64 data.
 
-📊 Threat Intelligence Metrics:
-• Ransomware Use: Unknown
-• EPSS Exploit Likelihood: 88.5% (Critical Threat)
-
-🔥 Public GitHub PoC Exploits Found:
-1. [user/CVE-2026-86950-exploit](https://github.com/) ⭐ 42
-2. [researcher/apple-poc-rce](https://github.com/) ⭐ 15
-
-🛠️ Required Defensive Action:
-Apply vendor updates immediately.
+🔗 Read Full Disclosed Report & POC:
+https://hackerone.com/reports/3861550
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛡️ Sandeep's Cyber Threat Intel Bot
+👑 Sandeep's Bug Bounty Hunter Radar
+```
+
+### 2. Day-1 Zero-Day Pre-Disclosure Alert
+```text
+⚡ DAY-1 ZERO-DAY PRE-DISCLOSURE RADAR (GHSA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 ID: GHSA-chx6-46f5-w4vp | CVE: CVE-2026-12227
+🚨 Severity: CRITICAL (Pre-KEV Early Alert)
+
+📖 Vulnerability Summary:
+Unauthenticated Remote Code Execution in Core Network API.
+
+🎯 Ready-to-Scan Nuclei Template:
+🔗 https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-12227.yaml
+💻 nuclei -t cves/2026/CVE-2026-12227.yaml -l targets.txt
+
+🔬 Root-Cause Patch Diff Link:
+🔗 https://github.com/vendor/repo/commit/7a8f9c
+
+🔗 Full Security Advisory:
+https://github.com/advisories/GHSA-chx6-46f5-w4vp
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+👑 Sandeep's Top 1% Hacker Radar
 ```
 
 ---
 
-## 🛠️ How to Deploy
+## 🔒 Enterprise OPSEC & Security Model
 
-1. Fork or clone this repository:
-   ```bash
-   git clone https://github.com/realsandeep1271-ui/cve-intelligence-bot.git
-   ```
-2. Configure your Telegram credentials in `cve_intel_bot.py`:
-   - `TELEGRAM_BOT_TOKEN`
-   - `TELEGRAM_CHAT_ID`
-3. Enable GitHub Actions in your repository:
-   - Go to **Actions** tab → Enable workflows.
-   - The bot will run automatically every 1 hour!
+This project adheres to strict Zero-Trust Operational Security (OPSEC):
+- **Zero Hardcoded Secrets:** All tokens and API keys are isolated within **GitHub Repository Secrets**:
+  - `GEMINI_API_KEY` — Google Gemini Pro API authentication
+  - `TELEGRAM_BOT_TOKEN` — Telegram Bot API credential
+  - `TELEGRAM_CHAT_ID` — Targeted broadcast channel/group ID
+- **State Deduplication:** State machines (`seen_cves.json`, `seen_ghsa.json`, `seen_news.json`, `seen_bounties.json`, `seen_programs.json`) prevent duplicate noise and guarantee 100% signal delivery.
 
 ---
 
 ## 📜 License & Ethics
 
-Distributed under the **MIT License**. This tool is intended for defensive security teams, SOC analysts, and cybersecurity researchers to rapidly patch known exploited vulnerabilities.
+Distributed under the **MIT License**. This tool is engineered strictly for authorized security research, defensive threat modeling, and bug bounty hunting within official program scopes.
+
+Designed with ❤️ by **Sandeep Yadav** ([@realsandeep1271-ui](https://github.com/realsandeep1271-ui)).
