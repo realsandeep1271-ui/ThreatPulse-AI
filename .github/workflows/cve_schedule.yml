@@ -26,6 +26,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python cve_intel_bot.py
 
@@ -33,7 +34,7 @@ jobs:
         run: |
           git config --global user.name "Sandeep-Bot"
           git config --global user.email "bot@realsandeep1271.ui"
-          git add seen_cves.json seen_ghsa.json cisa_kev_cache.json bot_state.json 2>/dev/null || true
+          git add seen_cves.json seen_ghsa.json seen_news.json seen_nuclei.json cisa_kev_cache.json bot_state.json 2>/dev/null || true
           if git diff-index --quiet HEAD --; then
             echo "No new CVEs to commit."
           else

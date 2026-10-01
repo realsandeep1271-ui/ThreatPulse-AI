@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 # Secrets and Chat IDs are loaded securely from Environment Variables / GitHub Secrets
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
 if not TELEGRAM_BOT_TOKEN:
     # Try reading from local .env if available
@@ -17,13 +18,59 @@ if not TELEGRAM_BOT_TOKEN:
 
 CISA_KEV_URL = "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json"
 THN_RSS_URL = "https://feeds.feedburner.com/TheHackersNews"
+SANS_ISC_RSS_URL = "https://isc.sans.edu/rssfeed.xml"
 GHSA_API_URL = "https://api.github.com/advisories?per_page=10"
+NUCLEI_ADDITIONS_URL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/.new-additions"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SEEN_FILE = os.path.join(BASE_DIR, "seen_cves.json")
 SEEN_GHSA_FILE = os.path.join(BASE_DIR, "seen_ghsa.json")
+SEEN_NEWS_FILE = os.path.join(BASE_DIR, "seen_news.json")
+SEEN_NUCLEI_FILE = os.path.join(BASE_DIR, "seen_nuclei.json")
 CISA_LOCAL_CACHE = os.path.join(BASE_DIR, "cisa_kev_cache.json")
 STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
+
+# ================= GEMINI PRO AI ENGINE =================
+def ask_gemini_pro(prompt: str, system_instruction: str = None) -> str:
+    """Queries Google Gemini Pro/Flash API for deep exploit reasoning and Q&A."""
+    key = os.getenv("GEMINI_API_KEY", "").strip() or GEMINI_API_KEY
+    if not key:
+        return ""
+
+    for model_name in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        if system_instruction:
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                res_json = json.loads(resp.read().decode())
+                candidates = res_json.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "").strip()
+        except Exception as e:
+            continue
+    return ""
+
+def generate_ai_threat_breakdown(title: str, summary: str, context: str = "threat intel") -> str:
+    """Generates a 3-bullet elite offensive hacker breakdown using Gemini Pro."""
+    sys_prompt = (
+        "You are an elite offensive security researcher and top 1% bug bounty hunter. "
+        "Summarize the vulnerability/threat in exactly 3 sharp bullet points with emojis:\n"
+        "• 🎯 Target & Bug Class: (service name & bug category)\n"
+        "• ⚡ Exploit TTPs: (how attackers exploit or chain it)\n"
+        "• 🛡️ Hunter/Defender Action: (concrete recon or defense tip)\n"
+        "Write in crisp Hinglish/English. Keep under 70 words. No boilerplate."
+    )
+    user_prompt = f"Threat Title: {title}\nSummary: {summary}\nContext: {context}"
+    return ask_gemini_pro(user_prompt, sys_prompt)
 
 # ================= TELEGRAM API HELPERS =================
 def send_telegram_message(message: str, chat_id: str = None, reply_to_id: int = None):
@@ -212,38 +259,82 @@ def format_tool_alert(tool: dict):
         f"🛡️ *Sandeep's Hacker Arsenal Radar*"
     )
 
-# ================= 4. CORPORATE & GLOBAL CYBER NEWS =================
-def fetch_latest_cyber_news():
-    req = urllib.request.Request(THN_RSS_URL, headers={"User-Agent": "Mozilla/5.0"})
-    news_items = []
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            tree = ET.fromstring(resp.read())
-            channel = tree.find("channel")
-            if channel is not None:
-                for item in channel.findall("item")[:3]:
-                    title = item.find("title").text if item.find("title") is not None else ""
-                    link = item.find("link").text if item.find("link") is not None else ""
-                    desc = item.find("description").text if item.find("description") is not None else ""
-                    clean_desc = desc.split("<")[0].strip() if desc else ""
-                    news_items.append({
-                        "title": title,
-                        "link": link,
-                        "desc": clean_desc[:250] + "..." if len(clean_desc) > 250 else clean_desc
-                    })
-    except Exception as e:
-        print(f"[-] News Fetch Error: {e}")
-    return news_items
+# ================= 4. REAL-TIME MULTI-SOURCE CYBER NEWS =================
+def fetch_multi_source_cyber_news():
+    feeds = [
+        {"source": "The Hacker News", "url": THN_RSS_URL},
+        {"source": "SANS Internet Storm Center", "url": SANS_ISC_RSS_URL}
+    ]
+    all_news = []
+    for f in feeds:
+        try:
+            req = urllib.request.Request(f["url"], headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                tree = ET.fromstring(resp.read())
+                channel = tree.find("channel")
+                if channel is not None:
+                    for item in channel.findall("item")[:4]:
+                        title = item.find("title").text if item.find("title") is not None else ""
+                        link = item.find("link").text if item.find("link") is not None else ""
+                        desc = item.find("description").text if item.find("description") is not None else ""
+                        clean_desc = desc.split("<")[0].strip() if desc else ""
+                        if title and link:
+                            all_news.append({
+                                "source": f["source"],
+                                "title": title.strip(),
+                                "link": link.strip(),
+                                "desc": clean_desc[:280] + "..." if len(clean_desc) > 280 else clean_desc
+                            })
+        except Exception as e:
+            print(f"[-] News Fetch Error ({f['source']}): {e}")
+    return all_news
 
 def format_news_alert(news_item: dict):
+    ai_breakdown = generate_ai_threat_breakdown(news_item['title'], news_item['desc'], context=news_item['source'])
+    ai_section = ""
+    if ai_breakdown:
+        ai_section = f"🧠 *Gemini Pro Threat Breakdown:*\n{ai_breakdown}\n\n"
+
     return (
-        f"⚡ *GLOBAL & CORPORATE THREAT INTELLIGENCE NEWS*\n"
+        f"⚡ *REAL-TIME CYBER THREAT RADAR*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📡 *Source:* `{news_item['source']}`\n"
         f"🚨 *Headline:* {news_item['title']}\n\n"
-        f"📝 *Executive Summary:*\n{news_item['desc']}\n\n"
-        f"🔗 *Full Official Investigation:*\n[{news_item['link']}]({news_item['link']})\n"
+        f"📝 *Summary:*\n{news_item['desc']}\n\n"
+        f"{ai_section}"
+        f"🔗 *Full Investigation:* [Read Official Source]({news_item['link']})\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🛡️ *Sandeep's Cyber Threat News*"
+        f"🛡️ *Sandeep's Cyber Threat Radar*"
+    )
+
+def fetch_latest_nuclei_additions():
+    """Fetches real-time newly published Nuclei templates from ProjectDiscovery."""
+    templates = []
+    try:
+        req = urllib.request.Request(NUCLEI_ADDITIONS_URL, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            lines = [l.strip() for l in resp.read().decode().splitlines() if l.strip()]
+            for line in lines[-8:]:
+                templates.append({
+                    "path": line,
+                    "url": f"https://github.com/projectdiscovery/nuclei-templates/blob/main/{line}",
+                    "cmd": f"nuclei -t {line} -l targets.txt"
+                })
+    except Exception as e:
+        print(f"[-] Nuclei Additions Fetch Error: {e}")
+    return templates
+
+def format_nuclei_new_template_alert(tmpl: dict):
+    return (
+        f"🎯 *NEW NUCLEI SCANNER TEMPLATE ADDED*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔥 *Template:* `{tmpl['path']}`\n\n"
+        f"⚡ *Instant Scan Command:*\n"
+        f"`{tmpl['cmd']}`\n\n"
+        f"🔗 *View YAML on GitHub:*\n"
+        f"[{tmpl['path']}]({tmpl['url']})\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👑 *Top 1% Bug Hunter Automation*"
     )
 
 # ================= 5. TOP 1% ELITE HACKER ARSENAL =================
@@ -509,17 +600,33 @@ def process_interactive_commands():
                 f"🤖 *Cyber Threat Intel Bot — Elite Command Menu*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"Hi {msg.get('from', {}).get('first_name', 'Hacker')}! You can query me using these commands:\n\n"
+                f"🧠 `/ask <question>` — Ask Gemini Pro any hacking, bug bounty, or exploit doubt!\n"
                 f"📌 `/cve <keyword>` — Search latest exploited CVEs (e.g. `/cve windows` or `/cve apple`)\n"
                 f"⚡ `/0day` — Day-1 Pre-Disclosure Advisories (GHSA Zero-Days)\n"
                 f"🎯 `/nuclei <cve>` — Check ready-made Nuclei scanner template\n"
                 f"🛠️ `/tool <keyword>` — Discover top trending hacker tools (e.g. `/tool osint`)\n"
                 f"🧩 `/extension` — Get today's top hacker browser extension\n"
                 f"🎯 `/tip` — Get today's 1-Minute Bug Bounty Trick\n"
-                f"⚡ `/news` — Breaking corporate & cyber news in 60 seconds\n\n"
+                f"⚡ `/news` — Breaking corporate & cyber news stream\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"👑 *Engineered by Sandeep Yadav (@realsandeep1271-ui)*"
             )
             send_telegram_message(help_text, chat_id=chat_id, reply_to_id=msg_id)
+
+        elif cmd in ["/ask", "/ai", "/mentor"]:
+            query = args.strip()
+            if not query:
+                reply = "❓ *Usage:* `/ask <aapka doubt>`\n_Example:_ `/ask CORS misconfiguration se account takeover kaise karein?`"
+            else:
+                ai_answer = ask_gemini_pro(
+                    query,
+                    system_instruction="You are an elite offensive security mentor and top 1% bug bounty hunter. Answer clearly, accurately, and practically in Hinglish/English with code/command snippets where applicable."
+                )
+                if ai_answer:
+                    reply = f"🤖 *Gemini Pro Cyber Mentor:*\n\n{ai_answer}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ *AI Threat Intel Engine*"
+                else:
+                    reply = "⚠️ *Gemini Pro AI:* Key initializing. Please ensure `GEMINI_API_KEY` is added to GitHub Secrets!"
+            send_telegram_message(reply, chat_id=chat_id, reply_to_id=msg_id)
 
         elif cmd == "/0day":
             advs = fetch_ghsa_early_advisories()
@@ -552,7 +659,7 @@ def process_interactive_commands():
             send_telegram_message(format_extension_alert(ext), chat_id=chat_id, reply_to_id=msg_id)
 
         elif cmd == "/news":
-            news = fetch_latest_cyber_news()
+            news = fetch_multi_source_cyber_news()
             if news:
                 send_telegram_message(format_news_alert(news[0]), chat_id=chat_id, reply_to_id=msg_id)
             else:
@@ -689,18 +796,53 @@ def run_sync(test_mode=False):
         else:
             print("[-] Daily Hacker Extension failed to send (will retry next cycle).")
 
-    # 5. TRACK: CORPORATE & GLOBAL CYBER NEWS
-    if state.get("last_news_date") != today_str:
-        print("[*] Broadcasting Corporate Threat & Cyber News...")
-        news = fetch_latest_cyber_news()
-        if news:
-            res = send_telegram_message(format_news_alert(news[0]))
+    # 5. TRACK: REAL-TIME CONTINUOUS CYBER THREAT RADAR (THN + SANS ISC)
+    seen_news = set()
+    if os.path.exists(SEEN_NEWS_FILE):
+        try:
+            with open(SEEN_NEWS_FILE, "r", encoding="utf-8") as nf:
+                seen_news = set(json.load(nf))
+        except Exception:
+            seen_news = set()
+
+    print("[*] Checking Real-Time Cyber News Feeds (THN & SANS ISC)...")
+    all_news = fetch_multi_source_cyber_news()
+    new_news = [n for n in all_news if n["link"] not in seen_news]
+    if new_news:
+        print(f"[!] Broadcasting {len(new_news)} new Breaking Cyber News story/stories...")
+        for item in new_news[:2]:
+            res = send_telegram_message(format_news_alert(item))
             if res:
-                state["last_news_date"] = today_str
-                save_bot_state(state)
-                print("[+] Corporate Cyber News sent!")
-            else:
-                print("[-] Corporate Cyber News failed to send (will retry next cycle).")
+                seen_news.add(item["link"])
+        with open(SEEN_NEWS_FILE, "w", encoding="utf-8") as nf:
+            json.dump(list(seen_news), nf)
+        print("[+] Updated seen_news.json successfully.")
+    else:
+        print("[+] No new Cyber News stories right now.")
+
+    # 6. TRACK: PROJECTDISCOVERY NUCLEI TEMPLATE ADDITIONS RADAR
+    seen_nuclei = set()
+    if os.path.exists(SEEN_NUCLEI_FILE):
+        try:
+            with open(SEEN_NUCLEI_FILE, "r", encoding="utf-8") as nuc_f:
+                seen_nuclei = set(json.load(nuc_f))
+        except Exception:
+            seen_nuclei = set()
+
+    print("[*] Checking ProjectDiscovery Nuclei Template Additions...")
+    n_additions = fetch_latest_nuclei_additions()
+    new_n_additions = [t for t in n_additions if t["path"] not in seen_nuclei]
+    if new_n_additions:
+        print(f"[!] Broadcasting {len(new_n_additions)} new Nuclei Template(s)...")
+        for tmpl in new_n_additions[:2]:
+            res = send_telegram_message(format_nuclei_new_template_alert(tmpl))
+            if res:
+                seen_nuclei.add(tmpl["path"])
+        with open(SEEN_NUCLEI_FILE, "w", encoding="utf-8") as nuc_f:
+            json.dump(list(seen_nuclei), nuc_f)
+        print("[+] Updated seen_nuclei.json successfully.")
+    else:
+        print("[+] No new Nuclei templates added right now.")
 
 if __name__ == "__main__":
     if "--0day" in sys.argv:
