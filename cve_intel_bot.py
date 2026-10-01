@@ -630,8 +630,8 @@ def run_sync(test_mode=False):
                 nuclei_info = check_nuclei_template(cve_id)
                 patch_diffs = find_patch_commit_diffs(cve_id)
                 alert_msg = format_cve_alert(item, pocs, epss, nuclei_info, patch_diffs)
-                send_telegram_message(alert_msg)
-                if not test_mode:
+                res = send_telegram_message(alert_msg)
+                if not test_mode and res:
                     seen_ids.add(cve_id)
 
             if not test_mode:
@@ -657,8 +657,9 @@ def run_sync(test_mode=False):
         print(f"[!] Broadcasting {len(new_advs)} new GHSA Day-1 Zero-Day(s)...")
         for a in new_advs[:2]:
             n_info = check_nuclei_template(a.get("cve_id"))
-            send_telegram_message(format_ghsa_alert(a, n_info))
-            seen_ghsa.add(a["ghsa_id"])
+            res = send_telegram_message(format_ghsa_alert(a, n_info))
+            if res:
+                seen_ghsa.add(a["ghsa_id"])
         with open(SEEN_GHSA_FILE, "w", encoding="utf-8") as gf:
             json.dump(list(seen_ghsa), gf)
 
@@ -667,30 +668,39 @@ def run_sync(test_mode=False):
         print("[*] Broadcasting Daily Bug Bounty Trick...")
         idx = datetime.datetime.now().day % len(BUG_BOUNTY_TIPS)
         tip = BUG_BOUNTY_TIPS[idx]
-        send_telegram_message(format_bug_bounty_tip(tip))
-        state["last_tip_date"] = today_str
-        save_bot_state(state)
-        print("[+] Daily Bug Bounty trick sent!")
+        res = send_telegram_message(format_bug_bounty_tip(tip))
+        if res:
+            state["last_tip_date"] = today_str
+            save_bot_state(state)
+            print("[+] Daily Bug Bounty trick sent!")
+        else:
+            print("[-] Daily Bug Bounty trick failed to send (will retry next cycle).")
 
     # 4. TRACK: DAILY HACKER BROWSER EXTENSION
     if state.get("last_extension_date") != today_str:
         print("[*] Broadcasting Daily Hacker Browser Extension...")
         idx = datetime.datetime.now().day % len(HACKER_EXTENSIONS)
         ext = HACKER_EXTENSIONS[idx]
-        send_telegram_message(format_extension_alert(ext))
-        state["last_extension_date"] = today_str
-        save_bot_state(state)
-        print("[+] Daily Hacker Extension sent!")
+        res = send_telegram_message(format_extension_alert(ext))
+        if res:
+            state["last_extension_date"] = today_str
+            save_bot_state(state)
+            print("[+] Daily Hacker Extension sent!")
+        else:
+            print("[-] Daily Hacker Extension failed to send (will retry next cycle).")
 
     # 5. TRACK: CORPORATE & GLOBAL CYBER NEWS
     if state.get("last_news_date") != today_str:
         print("[*] Broadcasting Corporate Threat & Cyber News...")
         news = fetch_latest_cyber_news()
         if news:
-            send_telegram_message(format_news_alert(news[0]))
-            state["last_news_date"] = today_str
-            save_bot_state(state)
-            print("[+] Corporate Cyber News sent!")
+            res = send_telegram_message(format_news_alert(news[0]))
+            if res:
+                state["last_news_date"] = today_str
+                save_bot_state(state)
+                print("[+] Corporate Cyber News sent!")
+            else:
+                print("[-] Corporate Cyber News failed to send (will retry next cycle).")
 
 if __name__ == "__main__":
     if "--0day" in sys.argv:
