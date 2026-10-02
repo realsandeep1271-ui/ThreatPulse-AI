@@ -267,12 +267,15 @@ def format_tool_alert(tool: dict):
 def fetch_multi_source_cyber_news():
     feeds = [
         {"source": "The Hacker News", "url": THN_RSS_URL},
-        {"source": "SANS Internet Storm Center", "url": SANS_ISC_RSS_URL}
+        {"source": "SANS Internet Storm Center", "url": SANS_ISC_RSS_URL},
+        {"source": "SecurityAffairs (CTI)", "url": "https://securityaffairs.com/feed"},
+        {"source": "KrebsOnSecurity", "url": "https://krebsonsecurity.com/feed/"},
+        {"source": "Cisco Talos Intelligence", "url": "https://blog.talosintelligence.com/rss/"}
     ]
     all_news = []
     for f in feeds:
         try:
-            req = urllib.request.Request(f["url"], headers={"User-Agent": "Mozilla/5.0"})
+            req = urllib.request.Request(f["url"], headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 tree = ET.fromstring(resp.read())
                 channel = tree.find("channel")

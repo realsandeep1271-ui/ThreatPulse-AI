@@ -2,8 +2,8 @@ name: 24/7 CVE Threat Intelligence Bot
 
 on:
   schedule:
-    # Runs every 30 minutes (24/7/365) for faster exploit detection
-    - cron: '*/30 * * * *'
+    # Runs every 20 minutes (24/7/365 in GitHub cloud)
+    - cron: '*/20 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI anytime!
 
 jobs:
