@@ -41,7 +41,7 @@ def ask_gemini_pro(prompt: str, system_instruction: str = None) -> str:
     if not key:
         return ""
 
-    for model_name in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]:
+    for model_name in ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-pro", "gemini-pro-latest", "gemini-1.5-flash", "gemini-2.0-flash"]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
