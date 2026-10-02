@@ -11,21 +11,21 @@ cve_intel_bot.TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 cve_intel_bot.TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 print("==========================================================")
-print("🛡️  SANDEEP'S HIGH-SPEED CYBER THREAT RADAR DAEMON  🛡️")
+print("🛡️  THREATPULSE-AI: 24/7 CYBER THREAT RADAR DAEMON  🛡️")
 print("==========================================================")
-print("[+] Mode: Real-Time Continuous Firehose (Every 90 Seconds)")
-print("[+] Feeds: THN | SANS ISC | SecurityAffairs | Krebs | Talos | H1 | Nuclei")
+print("[+] Mode: Instant Interactive Commands + 30-Min Paced Broadcasts")
+print("[+] Feeds: THN | BleepingComputer | SANS | SecurityAffairs | Krebs | Talos | H1 | Nuclei")
 print("[+] Press Ctrl + C anytime to stop.")
 print("==========================================================")
 
 while True:
     try:
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"\n[*] [{now_str}] Scanning 5 CTI Feeds, GHSA, and Telegram...")
+        print(f"\n[*] [{now_str}] Polling Telegram & Threat Radar...")
         cve_intel_bot.run_sync()
     except KeyboardInterrupt:
         print("\n[-] Stopped by user.")
         break
     except Exception as e:
         print(f"[-] Daemon Error: {e}")
-    time.sleep(90)
+    time.sleep(30)
