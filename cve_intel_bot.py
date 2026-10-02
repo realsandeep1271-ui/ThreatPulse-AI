@@ -32,6 +32,7 @@ SEEN_BOUNTIES_FILE = os.path.join(BASE_DIR, "seen_bounties.json")
 SEEN_PROGRAMS_FILE = os.path.join(BASE_DIR, "seen_programs.json")
 H1_REPORTS_CSV_URL = "https://raw.githubusercontent.com/reddelexc/hackerone-reports/master/data.csv"
 CHAOS_PROGRAMS_URL = "https://raw.githubusercontent.com/projectdiscovery/public-bugbounty-programs/main/dist/data.json"
+BUGCROWD_DATA_URL = "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/bugcrowd_data.json"
 CISA_LOCAL_CACHE = os.path.join(BASE_DIR, "cisa_kev_cache.json")
 STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
 
@@ -112,6 +113,11 @@ def send_telegram_message(message, chat_id: str = None, reply_to_id: int = None,
                 return json.loads(resp.read().decode())
         except Exception as e:
             print(f"[-] Telegram Send Attempt {attempt} Error: {e}")
+            # If markdown parse failed (HTTP 400), fallback to plain text so message is never lost!
+            if "400" in str(e) and "parse_mode" in payload:
+                del payload["parse_mode"]
+                data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json", "User-Agent": "CyberIntelBot/3.0"})
             time.sleep(2)
     return None
 
@@ -451,43 +457,82 @@ def format_bounty_report_alert(report: dict):
     return msg, markup
 
 def fetch_latest_bounty_programs():
-    """Fetches public bug bounty programs on HackerOne & Bugcrowd."""
+    """Fetches public bug bounty programs from Bugcrowd (live scraper feed) and HackerOne."""
     programs = []
-    req = urllib.request.Request(CHAOS_PROGRAMS_URL, headers={"User-Agent": "Mozilla/5.0"})
+
+    # 1. LIVE BUGCROWD PROGRAMS FEED (Updated every 30 mins)
     try:
-        with urllib.request.urlopen(req, timeout=12) as r:
-            data = json.loads(r.read().decode())
-            for p in data.get("programs", []):
+        req_bc = urllib.request.Request(BUGCROWD_DATA_URL, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req_bc, timeout=15) as r:
+            bc_data = json.loads(r.read().decode("utf-8"))
+            for p in bc_data:
+                p_url = p.get("url", "")
+                if not p_url:
+                    continue
+                max_pay = p.get("max_payout") or 0
+                targets = p.get("targets", {}).get("in_scope", [])
+                programs.append({
+                    "name": p.get("name", "Bugcrowd Program").strip(),
+                    "url": p_url,
+                    "platform": "Bugcrowd",
+                    "bounty": bool(max_pay > 0),
+                    "max_payout": max_pay,
+                    "safe_harbor": p.get("safe_harbor", "standard"),
+                    "domains_count": len(targets)
+                })
+    except Exception as e:
+        print(f"[-] Bugcrowd Live Feed Error: {e}")
+
+    # 2. HACKERONE PROGRAMS FEED (Chaos / Public Bounties)
+    try:
+        req_h1 = urllib.request.Request(CHAOS_PROGRAMS_URL, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req_h1, timeout=12) as r:
+            chaos_data = json.loads(r.read().decode())
+            for p in chaos_data.get("programs", []):
                 url = p.get("url", "")
-                if "hackerone.com" in url or "bugcrowd.com" in url:
-                    platform = "HackerOne" if "hackerone.com" in url else "Bugcrowd"
+                if "hackerone.com" in url:
                     programs.append({
                         "name": p.get("name"),
                         "url": url,
-                        "platform": platform,
+                        "platform": "HackerOne",
                         "bounty": p.get("bounty", False),
+                        "max_payout": 0,
+                        "safe_harbor": "standard",
                         "domains_count": len(p.get("domains", []))
                     })
     except Exception as e:
-        print(f"[-] Bounty Programs Fetch Error: {e}")
+        print(f"[-] HackerOne Programs Fetch Error: {e}")
+
     return programs
 
 def format_bounty_program_alert(prog: dict):
-    reward = "Cash Bounties ($$$)" if prog["bounty"] else "Hall of Fame / Swag"
+    max_pay = prog.get("max_payout", 0)
+    if max_pay and max_pay > 0:
+        reward = f"Cash Bounties up to ${max_pay:,.0f} (~₹{int(max_pay * 85):,})"
+    elif prog.get("bounty"):
+        reward = "Cash Bounties ($$$)"
+    else:
+        reward = "Hall of Fame / Swag (VDP)"
+
+    safe_h = str(prog.get("safe_harbor", "standard")).capitalize()
+    targets_label = "targets" if prog["platform"] == "Bugcrowd" else "domains"
+
     msg = (
         f"🎯 *NEW BUG BOUNTY PROGRAM LAUNCHED*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🏢 *Company:* `{prog['name']}`\n"
         f"🌐 *Platform:* `{prog['platform']}`\n"
-        f"💰 *Rewards:* `{reward}`\n"
-        f"🎯 *In-Scope Target Assets:* `{prog['domains_count']} domains`\n\n"
+        f"💵 *Bounty Rewards:* `{reward}`\n"
+        f"🛡️ *Safe Harbor:* `{safe_h}`\n"
+        f"🎯 *In-Scope Target Assets:* `{prog['domains_count']} {targets_label}`\n\n"
         f"🔗 *Official Program Scope & Rules:*\n[{prog['url']}]({prog['url']})\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚡ *Start Recon Before Others! — ThreatPulse-AI*"
+        f"👑 *ThreatPulse-AI Bug Bounty Radar*"
     )
+    btn_text = f"🎯 View {prog['platform']} Scope & Rules"
     markup = {
         "inline_keyboard": [
-            [{"text": "🎯 View Scope & Start Recon", "url": prog["url"]}]
+            [{"text": btn_text, "url": prog["url"]}]
         ]
     }
     return msg, markup
@@ -846,9 +891,11 @@ def process_interactive_commands():
             else:
                 send_telegram_message("🔍 No disclosed bounty reports found right now.", chat_id=chat_id, reply_to_id=msg_id)
 
-        elif cmd in ["/program", "/target", "/scope"]:
+        elif cmd in ["/program", "/target", "/scope", "/bugcrowd"]:
             keyword = args.lower().strip()
             programs = fetch_latest_bounty_programs()
+            if cmd == "/bugcrowd" and not keyword:
+                keyword = "bugcrowd"
             if keyword:
                 matched = [p for p in programs if keyword in p['name'].lower() or keyword in p['url'].lower()]
             else:
