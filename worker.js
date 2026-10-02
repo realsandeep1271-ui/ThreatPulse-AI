@@ -4,7 +4,7 @@
 // =====================================================================
 
 const TELEGRAM_BOT_TOKEN = "8786341409:AAFS1fCRC8uoeK6FhD7-pqLqoHIlVwSs5GY";
-const TELEGRAM_CHAT_ID = "-1004461177482";
+const TELEGRAM_CHAT_ID = "-1004315340178";
 
 export default {
   // Triggered every 5 minutes 24/7 by Cloudflare Cron Trigger (*/5 * * * *)
