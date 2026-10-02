@@ -88,7 +88,7 @@ async function checkBugcrowdLive(env) {
 🔗 *Official Program Scope & Rules:*
 [${pUrl}](${pUrl})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-👑 *ThreatPulse-AI Bug Bounty Radar*`;
+👑 *Cyber Threat Intelligence*`;
 
       const markup = {
         inline_keyboard: [
@@ -144,7 +144,7 @@ async function checkGhsaZeroDays(env) {
         ? `Fixed in: \`${cleanText(adv.vulnerabilities[0].patched_versions)}\``
         : "⚠️ *No Patch Available (Day-1 Zero-Day)*";
 
-      const text = `🚨 *THREATPULSE EARLY ZERO-DAY TELEMETRY*
+      const text = `🚨 *EARLY ZERO-DAY TELEMETRY*
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 🆔 *Advisory:* \`${ghsaId}\`
 ⚡ *CVE Mapping:* \`${cveId}\`
@@ -156,7 +156,7 @@ async function checkGhsaZeroDays(env) {
 ${summary}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-👑 *ThreatPulse-AI Proprietary Intelligence*`;
+👑 *Cyber Threat Intelligence*`;
 
       const markup = {
         inline_keyboard: [
@@ -225,7 +225,7 @@ ${title}
 🔗 *Read Full Writeup & PoC:*
 [${link}](${link})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-👑 *ThreatPulse-AI Bug Bounty Radar*`;
+👑 *Cyber Threat Intelligence*`;
 
       const markup = {
         inline_keyboard: [
@@ -288,7 +288,7 @@ ${action}
 
 ⏳ *Federal Action Due Date:* \`${dueDate}\`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-👑 *ThreatPulse-AI Proprietary Intelligence*`;
+👑 *Cyber Threat Intelligence*`;
 
       const markup = {
         inline_keyboard: [
@@ -346,7 +346,7 @@ ${title}
 🔗 *Full Threat Analysis & IOCs:*
 [${rawLink}](${rawLink})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-👑 *ThreatPulse-AI Proprietary Intelligence*`;
+👑 *Cyber Threat Intelligence*`;
 
       const markup = {
         inline_keyboard: [

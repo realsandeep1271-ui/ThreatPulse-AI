@@ -447,7 +447,7 @@ def format_bounty_report_alert(report: dict):
         f"{ai_block}"
         f"🔗 *Read Full Disclosed Report & POC:*\n[{report['link']}]({report['link']})\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👑 *ThreatPulse-AI Bug Bounty Radar*"
+        f"👑 *Cyber Threat Intelligence*"
     )
     markup = {
         "inline_keyboard": [
@@ -527,7 +527,7 @@ def format_bounty_program_alert(prog: dict):
         f"🎯 *In-Scope Target Assets:* `{prog['domains_count']} {targets_label}`\n\n"
         f"🔗 *Official Program Scope & Rules:*\n[{prog['url']}]({prog['url']})\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👑 *ThreatPulse-AI Bug Bounty Radar*"
+        f"👑 *Cyber Threat Intelligence*"
     )
     btn_text = f"🎯 View {prog['platform']} Scope & Rules"
     markup = {
