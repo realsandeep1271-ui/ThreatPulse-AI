@@ -673,9 +673,6 @@ def process_interactive_commands():
     if not updates:
         return
 
-    kev_data = fetch_cisa_kev()
-    vulns = kev_data.get("vulnerabilities", []) if kev_data else []
-
     for u in updates:
         up_id = u.get("update_id", 0)
         state["last_update_id"] = max(state.get("last_update_id", 0), up_id)
@@ -688,8 +685,8 @@ def process_interactive_commands():
         if not text or not chat_id:
             continue
 
-        cmd = text.split()[0].lower()
-        args = text[len(cmd):].strip()
+        cmd = text.split()[0].lower().split("@")[0]
+        args = text[len(text.split()[0]):].strip()
 
         if cmd in ["/help", "/start", "/menu"]:
             help_text = (
@@ -793,6 +790,8 @@ def process_interactive_commands():
 
         elif cmd == "/cve":
             query = args.lower() if args else "2026"
+            kev_data = fetch_cisa_kev()
+            vulns = kev_data.get("vulnerabilities", []) if kev_data else []
             matched = [v for v in vulns if query in v.get("cveID", "").lower() or query in v.get("vendorProject", "").lower() or query in v.get("product", "").lower()]
             matched.sort(key=lambda x: x.get("dateAdded", ""), reverse=True)
             if matched:
