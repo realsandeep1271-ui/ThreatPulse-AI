@@ -20,7 +20,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 CISA_KEV_URL = "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json"
 THN_RSS_URL = "https://feeds.feedburner.com/TheHackersNews"
 SANS_ISC_RSS_URL = "https://isc.sans.edu/rssfeed.xml"
-GHSA_API_URL = "https://api.github.com/advisories?per_page=10"
+GHSA_API_URL = "https://api.github.com/advisories?per_page=15&sort=published&direction=desc"
 NUCLEI_ADDITIONS_URL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/.new-additions"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
