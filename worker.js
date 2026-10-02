@@ -198,8 +198,8 @@ async function checkH1DisclosedBounties(env) {
       let link = (parts[2] || "").trim();
       if (!link) continue;
       if (!link.startsWith("http")) link = `https://${link}`;
-      const bounty = parseFloat(parts[3] || "0");
-      const vulnType = cleanText(parts[4] || "Security Flaw");
+      const bounty = parseFloat(parts[4] || "0");
+      const vulnType = cleanText(parts[5] || "Security Vulnerability");
 
       if (bounty <= 0) continue;
 
