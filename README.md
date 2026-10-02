@@ -1,6 +1,6 @@
-# 🛡️ 24/7 AI-Powered Cyber Threat Intelligence & Bug Bounty Engine
+# 🛡️ ThreatPulse-AI — 24/7 Autonomous Threat Intelligence & Bug Bounty Engine
 
-An autonomous, serverless Cybersecurity Threat Intelligence (CTI) & Bounty Reconnaissance engine powered by **Google Gemini Pro**. The system continuously monitors actively exploited zero-day vulnerabilities, predicts exploit weaponization likelihood, checks ready-to-run Nuclei scanner templates, fetches patch commit diffs, ingests real-time threat news from THN & SANS ISC, and tracks live **HackerOne disclosed bounty payouts** and **Bugcrowd programs** with instant Telegram broadcast and interactive AI mentoring.
+An autonomous, serverless Cybersecurity Threat Intelligence (CTI) & Bounty Reconnaissance engine powered by **Google Gemini Pro**. The system continuously monitors actively exploited zero-day vulnerabilities, predicts exploit weaponization likelihood, checks ready-to-run Nuclei scanner templates, fetches patch commit diffs, ingests real-time threat news from 5 major CTI feeds (THN, SANS ISC, SecurityAffairs, Krebs, Cisco Talos), and tracks live **HackerOne disclosed bounty payouts** and **Bugcrowd programs** with instant Telegram broadcast and interactive AI mentoring.
 
 Developed by **Sandeep Yadav** ([@realsandeep1271-ui](https://github.com/realsandeep1271-ui)) — *Security Researcher & Offensive Engineer*.
 
