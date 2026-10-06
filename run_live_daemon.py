@@ -5,8 +5,8 @@ import datetime
 import cve_intel_bot
 
 # Set up credentials safely
-os.environ["TELEGRAM_BOT_TOKEN"] = os.getenv("TELEGRAM_BOT_TOKEN", "8786341409:AAFS1fCRC8uoeK6FhD7-pqLqoHIlVwSs5GY")
-os.environ["TELEGRAM_CHAT_ID"] = os.getenv("TELEGRAM_CHAT_ID", "-1004461177482")
+os.environ["TELEGRAM_BOT_TOKEN"] = os.getenv("TELEGRAM_BOT_TOKEN", "")
+os.environ["TELEGRAM_CHAT_ID"] = os.getenv("TELEGRAM_CHAT_ID", "")
 cve_intel_bot.TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 cve_intel_bot.TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
