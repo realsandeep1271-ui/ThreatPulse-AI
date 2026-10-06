@@ -13,8 +13,8 @@ except Exception:
 
 # ================= CONFIGURATION =================
 # Secrets and Chat IDs are loaded securely from Environment Variables / GitHub Secrets
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8786341409:AAFS1fCRC8uoeK6FhD7-pqLqoHIlVwSs5GY").strip()
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1004315340178").strip()
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "5GY").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
 CISA_KEV_URL = "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json"
